@@ -3,6 +3,7 @@ use tauri::Manager;
 mod commands;
 mod database;
 mod models;
+mod postman_model;
 
 use commands::*;
 use database::Database;
@@ -66,7 +67,8 @@ pub fn run() {
             delete_request,
             delete_request,
             move_request,
-            send_http_request
+            send_http_request,
+            import_postman_collection
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

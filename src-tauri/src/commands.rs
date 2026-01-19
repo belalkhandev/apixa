@@ -1,10 +1,139 @@
 use crate::database::Database;
 use crate::models::*;
+use crate::postman_model::*;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Instant;
 use tauri::State;
 use uuid::Uuid;
+
+#[tauri::command]
+pub fn import_postman_collection(
+    db: State<Database>,
+    json_content: String,
+) -> Result<Collection, String> {
+    let postman_collection: PostmanCollection =
+        serde_json::from_str(&json_content).map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let collection_id = generate_id();
+    let timestamp = now();
+
+    let name = postman_collection.info.name;
+    let description = postman_collection.info.description;
+
+    conn.execute(
+        "INSERT INTO collections (id, name, description, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        (&collection_id, &name, &description, &timestamp, &timestamp),
+    )
+    .map_err(|e| e.to_string())?;
+
+    process_postman_items(&conn, &collection_id, None, &postman_collection.item)?;
+
+    Ok(Collection {
+        id: collection_id,
+        name,
+        description,
+        created_at: timestamp.clone(),
+        updated_at: timestamp,
+    })
+}
+
+fn process_postman_items(
+    conn: &rusqlite::Connection,
+    collection_id: &str,
+    parent_id: Option<&str>,
+    items: &[PostmanItem],
+) -> Result<(), String> {
+    for (index, item) in items.iter().enumerate() {
+        let name = item.name.clone().unwrap_or_else(|| "Untitled".to_string());
+        let sort_order = index as i32;
+
+        if let Some(requests) = &item.item {
+            // It's a folder
+            let folder_id = generate_id();
+            let timestamp = now();
+
+            conn.execute(
+                "INSERT INTO folders (id, collection_id, parent_id, name, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                (
+                    &folder_id,
+                    collection_id,
+                    parent_id,
+                    &name,
+                    sort_order,
+                    &timestamp,
+                    &timestamp,
+                ),
+            )
+            .map_err(|e| e.to_string())?;
+
+            process_postman_items(conn, collection_id, Some(&folder_id), requests)?;
+        } else if let Some(request) = &item.request {
+            // It's a request
+            let request_id = generate_id();
+            let timestamp = now();
+            let method = request.method.clone();
+
+            let url = match &request.url {
+                PostmanUrl::String(s) => s.clone(),
+                PostmanUrl::Object(o) => o.raw.clone(),
+            };
+
+            let body = if let Some(body) = &request.body {
+                body.raw.clone()
+            } else {
+                None
+            };
+
+            conn.execute(
+                "INSERT INTO requests (id, collection_id, folder_id, name, method, url, body, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                (
+                    &request_id,
+                    collection_id,
+                    parent_id,
+                    &name,
+                    &method,
+                    &url,
+                    &body,
+                    sort_order,
+                    &timestamp,
+                    &timestamp,
+                ),
+            )
+            .map_err(|e| e.to_string())?;
+
+            // Headers
+            for h in &request.header {
+                if h.disabled != Some(true) {
+                    let header_id = generate_id();
+                    conn.execute(
+                        "INSERT INTO request_headers (id, request_id, key, value, enabled) VALUES (?1, ?2, ?3, ?4, ?5)",
+                        (&header_id, &request_id, &h.key, &h.value, 1),
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+            }
+
+            // Params (Query)
+            if let PostmanUrl::Object(url_obj) = &request.url {
+                if let Some(query) = &url_obj.query {
+                    for q in query {
+                        if q.disabled != Some(true) && q.key.is_some() {
+                            let param_id = generate_id();
+                            conn.execute(
+                                "INSERT INTO request_params (id, request_id, key, value, param_type, description, enabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                                (&param_id, &request_id, q.key.as_ref().unwrap(), q.value.as_deref().unwrap_or(""), "query", q.description.as_deref(), 1),
+                            )
+                            .map_err(|e| e.to_string())?;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
 
 #[derive(serde::Serialize)]
 pub struct HttpResponse {

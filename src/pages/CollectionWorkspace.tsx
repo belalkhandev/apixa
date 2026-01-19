@@ -554,7 +554,8 @@ function CollectionWorkspace() {
     if (method === "GET") {
       return ["Params", "Headers", "Auth"];
     }
-    return ["Params", "Body", "Headers", "Auth"];
+    // User requested to hide Params tab for POST/PUT requests
+    return ["Body", "Headers", "Auth"];
   };
 
   const updateParam = (index: number, field: string, value: string | boolean) => {

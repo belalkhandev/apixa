@@ -232,6 +232,7 @@ function QuickRequest() {
             onBodyChange={setRequestBody}
             headers={headers}
             onHeadersChange={setHeaders}
+            method={method}
           />
 
           {/* Response */}

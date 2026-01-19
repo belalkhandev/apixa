@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Folder, Plus, Terminal, Loader2, Zap } from "lucide-react";
+import { Folder, Plus, Terminal, Loader2, Zap, Import } from "lucide-react";
 import NewCollectionModal from "../components/NewCollectionModal";
+import ImportCollectionModal from "../components/ImportCollectionModal";
 import { api, Collection } from "../api";
 
 function Home() {
   const navigate = useNavigate();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -104,15 +106,35 @@ function Home() {
             <Plus size={18} className="text-slate-400" />
             <span className="text-sm font-medium text-slate-500">New Collection</span>
           </motion.button>
+
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: (collections.length + 2) * 0.05 }}
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+          >
+            <Import size={18} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+            <span className="text-sm font-medium text-slate-500 group-hover:text-blue-600 transition-colors">Import</span>
+          </motion.button>
         </div>
-      </motion.div>
+      </motion.div >
 
       <NewCollectionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onCreate={handleCreateCollection}
       />
-    </div>
+
+      <ImportCollectionModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={(collection) => {
+          setCollections([collection, ...collections]);
+          navigate(`/collection/${collection.id}`);
+        }}
+      />
+    </div >
   );
 }
 
