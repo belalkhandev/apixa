@@ -1,24 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Search,
   Plus,
-  ChevronRight,
   ChevronDown,
-  Folder,
-  Home as HomeIcon,
   X,
   MoreHorizontal,
   Send,
   Loader2,
-  Trash2,
-  Edit3,
-  Check,
-  Copy,
-  WrapText,
-  FolderPlus,
-  FileJson,
   Columns,
   Rows,
   GripVertical,
@@ -29,9 +18,11 @@ import BodyEditor from "../components/shared/BodyEditor";
 import ResponseViewer from "../components/request/ResponseViewer";
 import HeadersEditor from "../components/shared/HeadersEditor";
 import AuthEditor, { AuthType } from "../components/shared/AuthEditor";
+import ParamsEditor, { Param } from "../components/shared/ParamsEditor";
 import { api, Collection, TreeItem, Environment, Request as ApiRequest, ResponseData } from "../api";
 import CollectionSidebar from "../components/workspace/CollectionSidebar";
 import { methodTextColors } from "../constants";
+import VariableInput from "../components/shared/VariableInput";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -49,12 +40,7 @@ interface FolderOpenState {
   [key: string]: boolean;
 }
 
-const statusColors: Record<string, string> = {
-  "2": "text-emerald-600 bg-emerald-50",
-  "3": "text-blue-600 bg-blue-50",
-  "4": "text-amber-600 bg-amber-50",
-  "5": "text-red-600 bg-red-50",
-};
+
 
 
 
@@ -81,7 +67,7 @@ function CollectionWorkspace() {
   const [headers, setHeaders] = useState<{ key: string; value: string; enabled: boolean }[]>([
     { key: "", value: "", enabled: true },
   ]);
-  const [params, setParams] = useState<{ key: string; value: string; param_type: string; description: string | null; enabled: boolean }[]>([
+  const [params, setParams] = useState<Param[]>([
     { key: "", value: "", param_type: "query", description: "", enabled: true },
   ]);
   // Auth state
@@ -97,7 +83,7 @@ function CollectionWorkspace() {
   const [requestName, setRequestName] = useState("New Request");
   const [isEditingCollectionName, setIsEditingCollectionName] = useState(false);
   const [editedCollectionName, setEditedCollectionName] = useState("");
-  const [showCollectionMenu, setShowCollectionMenu] = useState(false);
+
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
@@ -499,10 +485,30 @@ function CollectionWorkspace() {
     setError(null);
     setResponse(null);
 
-
-
     try {
-      const resolvedUrl = replaceEnvVariables(requestUrl);
+      // 1. Resolve basic URL variables
+      let resolvedUrl = replaceEnvVariables(requestUrl);
+
+      // 2. Append Query Params
+      const activeParams = params.filter(p => p.enabled && p.key.trim() !== "");
+      if (activeParams.length > 0) {
+        const urlObj = new URL(resolvedUrl.startsWith("http") ? resolvedUrl : `http://${resolvedUrl}`);
+        activeParams.forEach(p => {
+          const key = replaceEnvVariables(p.key);
+          const value = replaceEnvVariables(p.value);
+          urlObj.searchParams.append(key, value);
+        });
+
+        if (resolvedUrl.startsWith("http")) {
+          resolvedUrl = urlObj.toString();
+        } else {
+          const queryString = activeParams.map(p =>
+            `${encodeURIComponent(replaceEnvVariables(p.key))}=${encodeURIComponent(replaceEnvVariables(p.value))}`
+          ).join("&");
+          resolvedUrl = `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}${queryString}`;
+        }
+      }
+
       const resolvedBody = replaceEnvVariables(requestBody);
 
       const requestHeaders: Record<string, string> = {};
@@ -511,8 +517,6 @@ function CollectionWorkspace() {
           requestHeaders[replaceEnvVariables(h.key)] = replaceEnvVariables(h.value);
         }
       });
-
-
 
       if (method !== "GET" && method !== "DELETE" && resolvedBody) {
         if (!requestHeaders["Content-Type"]) {
@@ -558,31 +562,7 @@ function CollectionWorkspace() {
     return ["Body", "Headers", "Auth"];
   };
 
-  const updateParam = (index: number, field: string, value: string | boolean) => {
-    const newParams = [...params];
-    newParams[index] = { ...newParams[index], [field]: value };
 
-    // Auto-expand: if typing in the last row and it's not empty, add a new blank row
-    const isLastRow = index === params.length - 1;
-    const isTypingText = typeof value === "string" && value.length > 0;
-    const lastRowHasContent = newParams[index].key || newParams[index].value;
-
-    if (isLastRow && isTypingText && lastRowHasContent) {
-      newParams.push({ key: "", value: "", param_type: "query", description: "", enabled: true });
-    }
-
-    setParams(newParams);
-  };
-
-  const removeParam = (index: number) => {
-    // Always keep at least one row
-    if (params.length > 1) {
-      setParams(params.filter((_, i) => i !== index));
-    } else {
-      // If it's the only row, just clear it instead of removing
-      setParams([{ key: "", value: "", param_type: "query", description: "", enabled: true }]);
-    }
-  };
 
 
 
@@ -633,6 +613,38 @@ function CollectionWorkspace() {
     return result;
   };
 
+  const handleUpdateVariable = async (name: string, newValue: string) => {
+    if (!selectedEnvId) return;
+    const env = environments.find(e => e.id === selectedEnvId);
+    if (!env) return;
+
+    // Check if variable exists
+    const existingVar = env.variables.find(v => v.key === name);
+
+    let updatedVariables;
+    if (existingVar) {
+      // Update existing variable
+      updatedVariables = env.variables.map(v =>
+        v.key === name ? { ...v, value: newValue } : v
+      );
+    } else {
+      // Create new variable
+      updatedVariables = [
+        ...env.variables,
+        { key: name, value: newValue, enabled: true }
+      ];
+    }
+
+    try {
+      await api.updateEnvironment(env.id, env.name, updatedVariables);
+      setEnvironments(environments.map(e =>
+        e.id === env.id ? { ...e, variables: updatedVariables } : e
+      ));
+    } catch (err) {
+      console.error("Failed to update variable:", err);
+    }
+  };
+
   return (
     <div className="h-screen bg-slate-50 flex">
       <CollectionSidebar
@@ -678,25 +690,29 @@ function CollectionWorkspace() {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-1 flex-1 overflow-x-auto">
               {openTabs.map((tab) => (
-                <button
+                <div
                   key={tab.id}
-                  onClick={() => handleRequestClick(tab.id, tab.name, tab.method, tab.url)}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors whitespace-nowrap ${activeTabId === tab.id
+                  className={`flex items-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors whitespace-nowrap cursor-pointer ${activeTabId === tab.id
                     ? "border-blue-500 text-slate-800"
                     : "border-transparent text-slate-500 hover:text-slate-700"
                     }`}
                 >
-                  <span className={`text-[10px] font-bold ${methodTextColors[tab.method] || "text-slate-600"}`}>
-                    {tab.method}
-                  </span>
-                  <span>{tab.name}</span>
+                  <div
+                    className="flex items-center gap-2"
+                    onClick={() => handleRequestClick(tab.id, tab.name, tab.method, tab.url)}
+                  >
+                    <span className={`text-[10px] font-bold ${methodTextColors[tab.method] || "text-slate-600"}`}>
+                      {tab.method}
+                    </span>
+                    <span>{tab.name}</span>
+                  </div>
                   <button
                     onClick={(e) => handleCloseTab(tab.id, e)}
                     className="p-0.5 hover:bg-slate-200 rounded transition-colors"
                   >
                     <X size={12} className="text-slate-400" />
                   </button>
-                </button>
+                </div>
               ))}
               <button
                 onClick={() => handleNewRequest()}
@@ -762,13 +778,17 @@ function CollectionWorkspace() {
                   <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
 
-                <input
-                  type="text"
-                  value={requestUrl}
-                  onChange={(e) => setRequestUrl(e.target.value)}
-                  placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
-                />
+                <div className="flex-1 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
+                  <VariableInput
+                    value={requestUrl}
+                    onChange={setRequestUrl}
+                    placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                    className="px-4 h-full"
+                    environments={environments}
+                    selectedEnvId={selectedEnvId}
+                    onUpdateVariable={handleUpdateVariable}
+                  />
+                </div>
 
                 <button
                   onClick={handleSendRequest}
@@ -828,49 +848,14 @@ function CollectionWorkspace() {
 
                     <div className="p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
                       {activeRequestTab === "Params" && (
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-medium text-slate-700">Query Params</h4>
-                          </div>
-                          <div className="border border-slate-200 rounded-lg overflow-hidden shrink-0">
-                            <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
-                              <span className="text-xs font-medium text-slate-600">Key</span>
-                              <span className="text-xs font-medium text-slate-600">Value</span>
-                              <span className="text-xs font-medium text-slate-600">Description</span>
-                              <span></span>
-                            </div>
-                            {(params.length > 0 ? params : [{ key: "", value: "", param_type: "query", description: "", enabled: true }]).map((param, index) => (
-                              <div key={index} className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 px-3 py-2 border-b border-slate-100 last:border-b-0">
-                                <input
-                                  type="text"
-                                  value={param.key}
-                                  onChange={(e) => updateParam(index, "key", e.target.value)}
-                                  placeholder="key"
-                                  className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
-                                />
-                                <input
-                                  type="text"
-                                  value={param.value}
-                                  onChange={(e) => updateParam(index, "value", e.target.value)}
-                                  placeholder="value"
-                                  className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
-                                />
-                                <input
-                                  type="text"
-                                  value={param.description || ""}
-                                  onChange={(e) => updateParam(index, "description", e.target.value)}
-                                  placeholder="description"
-                                  className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
-                                />
-                                <button
-                                  onClick={() => removeParam(index)}
-                                  className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                        <div className="flex-1 flex flex-col min-h-0 h-full">
+                          <ParamsEditor
+                            params={params}
+                            onChange={setParams}
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
+                            onUpdateVariable={handleUpdateVariable}
+                          />
                         </div>
                       )}
 
@@ -879,6 +864,8 @@ function CollectionWorkspace() {
                           <BodyEditor
                             value={requestBody}
                             onChange={setRequestBody}
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
                           />
                         </div>
                       )}
@@ -887,6 +874,9 @@ function CollectionWorkspace() {
                         <HeadersEditor
                           headers={headers}
                           onChange={setHeaders}
+                          environments={environments}
+                          selectedEnvId={selectedEnvId}
+                          onUpdateVariable={handleUpdateVariable}
                         />
                       )}
 

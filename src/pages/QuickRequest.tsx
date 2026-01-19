@@ -7,6 +7,7 @@ import RequestUrlBar from "../components/request/RequestUrlBar";
 import RequestConfigTabs from "../components/request/RequestConfigTabs";
 import ResponseViewer from "../components/request/ResponseViewer";
 import { Header } from "../components/shared/HeadersEditor";
+import { Param } from "../components/shared/ParamsEditor";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -28,6 +29,7 @@ function QuickRequest() {
   const [requestName, setRequestName] = useState("New Request");
   const [requestBody, setRequestBody] = useState("");
   const [headers, setHeaders] = useState<Header[]>([{ key: "", value: "", enabled: true }]);
+  const [params, setParams] = useState<Param[]>([{ key: "", value: "", param_type: "query", description: "", enabled: true }]);
 
   // Response state
   const [response, setResponse] = useState<ResponseData | null>(null);
@@ -103,6 +105,38 @@ function QuickRequest() {
     return result;
   };
 
+  const handleUpdateVariable = async (name: string, newValue: string) => {
+    if (!selectedEnvId) return;
+    const env = environments.find(e => e.id === selectedEnvId);
+    if (!env) return;
+
+    // Check if variable exists
+    const existingVar = env.variables.find(v => v.key === name);
+
+    let updatedVariables;
+    if (existingVar) {
+      // Update existing variable
+      updatedVariables = env.variables.map(v =>
+        v.key === name ? { ...v, value: newValue } : v
+      );
+    } else {
+      // Create new variable
+      updatedVariables = [
+        ...env.variables,
+        { key: name, value: newValue, enabled: true }
+      ];
+    }
+
+    try {
+      await api.updateEnvironment(env.id, env.name, updatedVariables);
+      setEnvironments(environments.map(e =>
+        e.id === env.id ? { ...e, variables: updatedVariables } : e
+      ));
+    } catch (err) {
+      console.error("Failed to update variable:", err);
+    }
+  };
+
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -124,8 +158,32 @@ function QuickRequest() {
     const startTime = performance.now();
 
     try {
-      // Apply environment variables
-      const processedUrl = replaceEnvVariables(url);
+      // 1. Resolve basic URL variables
+      let processedUrl = replaceEnvVariables(url);
+
+      // 2. Append Query Params
+      const activeParams = params.filter(p => p.enabled && p.key.trim() !== "");
+      if (activeParams.length > 0) {
+        const urlObj = new URL(processedUrl.startsWith("http") ? processedUrl : `http://${processedUrl}`);
+        activeParams.forEach(p => {
+          // Resolve variables in params too!
+          const key = replaceEnvVariables(p.key);
+          const value = replaceEnvVariables(p.value);
+          urlObj.searchParams.append(key, value);
+        });
+        // If the original URL didn't have protocol, don't force it unless needed for URL object parsing
+        // actually let's just use the full string from urlObj if it was valid, or manual append
+        if (processedUrl.startsWith("http")) {
+          processedUrl = urlObj.toString();
+        } else {
+          // If relative or no protocol, manually append
+          const queryString = activeParams.map(p =>
+            `${encodeURIComponent(replaceEnvVariables(p.key))}=${encodeURIComponent(replaceEnvVariables(p.value))}`
+          ).join("&");
+          processedUrl = `${processedUrl}${processedUrl.includes('?') ? '&' : '?'}${queryString}`;
+        }
+      }
+
       const processedBody = replaceEnvVariables(requestBody);
 
       const requestHeaders: Record<string, string> = {};
@@ -178,7 +236,9 @@ function QuickRequest() {
       const newRequest = await api.createRequest(collectionId, name, method, url);
 
       const filteredHeaders = headers.filter((h) => h.key.trim() !== "");
-      if (requestBody || filteredHeaders.length > 0) {
+      const filteredParams = params.filter((p) => p.key.trim() !== "");
+
+      if (requestBody || filteredHeaders.length > 0 || filteredParams.length > 0) {
         await api.updateRequest(
           newRequest.id,
           name,
@@ -186,7 +246,7 @@ function QuickRequest() {
           url,
           requestBody || null,
           filteredHeaders.map((h) => ({ key: h.key, value: h.value, enabled: h.enabled })),
-          []
+          filteredParams.map((p) => ({ key: p.key, value: p.value, param_type: p.param_type, description: p.description, enabled: p.enabled }))
         );
       }
 
@@ -224,6 +284,9 @@ function QuickRequest() {
             onUrlChange={setUrl}
             onSend={handleSendRequest}
             isSending={isSending}
+            environments={environments}
+            selectedEnvId={selectedEnvId}
+            onUpdateVariable={handleUpdateVariable}
           />
 
           {/* Request Config */}
@@ -232,7 +295,12 @@ function QuickRequest() {
             onBodyChange={setRequestBody}
             headers={headers}
             onHeadersChange={setHeaders}
+            params={params}
+            onParamsChange={setParams}
             method={method}
+            environments={environments}
+            selectedEnvId={selectedEnvId}
+            onUpdateVariable={handleUpdateVariable}
           />
 
           {/* Response */}

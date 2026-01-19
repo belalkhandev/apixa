@@ -1,13 +1,20 @@
 import { useState } from "react";
 import BodyEditor from "../shared/BodyEditor";
 import HeadersEditor, { Header } from "../shared/HeadersEditor";
+import ParamsEditor, { Param } from "../shared/ParamsEditor";
+import { Environment } from "../../api";
 
 interface RequestConfigTabsProps {
     body: string;
     onBodyChange: (body: string) => void;
     headers: Header[];
     onHeadersChange: (headers: Header[]) => void;
+    params: Param[];
+    onParamsChange: (params: Param[]) => void;
     method: string;
+    environments: Environment[];
+    selectedEnvId: string | null;
+    onUpdateVariable?: (name: string, newValue: string) => void;
 }
 
 function RequestConfigTabs({
@@ -15,7 +22,12 @@ function RequestConfigTabs({
     onBodyChange,
     headers,
     onHeadersChange,
+    params,
+    onParamsChange,
     method,
+    environments,
+    selectedEnvId,
+    onUpdateVariable,
 }: RequestConfigTabsProps) {
     const [activeTab, setActiveTab] = useState("Body");
     const tabs = ["Body", "Headers", "Params"];
@@ -39,7 +51,7 @@ function RequestConfigTabs({
     }
 
     return (
-        <div className="bg-white rounded-xl border border-slate-200 mb-4">
+        <div className="bg-white rounded-xl border border-slate-200 mb-4 h-full flex flex-col">
             <div className="border-b border-slate-100 px-4">
                 <div className="flex gap-1">
                     {visibleTabs.map((tab) => (
@@ -57,19 +69,34 @@ function RequestConfigTabs({
                 </div>
             </div>
 
-            <div className="p-4">
+            <div className="p-4 flex-1 overflow-auto">
                 {activeTab === "Body" && (
-                    <BodyEditor value={body} onChange={onBodyChange} />
+                    <BodyEditor
+                        value={body}
+                        onChange={onBodyChange}
+                        environments={environments}
+                        selectedEnvId={selectedEnvId}
+                    />
                 )}
 
                 {activeTab === "Headers" && (
-                    <HeadersEditor headers={headers} onChange={onHeadersChange} />
+                    <HeadersEditor
+                        headers={headers}
+                        onChange={onHeadersChange}
+                        environments={environments}
+                        selectedEnvId={selectedEnvId}
+                        onUpdateVariable={onUpdateVariable}
+                    />
                 )}
 
                 {activeTab === "Params" && (
-                    <div className="p-4 text-slate-500 text-center">
-                        Query Params Editor (Coming Soon)
-                    </div>
+                    <ParamsEditor
+                        params={params}
+                        onChange={onParamsChange}
+                        environments={environments}
+                        selectedEnvId={selectedEnvId}
+                        onUpdateVariable={onUpdateVariable}
+                    />
                 )}
             </div>
         </div>

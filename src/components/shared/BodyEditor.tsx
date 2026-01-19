@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, AlertCircle } from "lucide-react";
-import Editor from "@monaco-editor/react";
+import Editor, { OnMount } from "@monaco-editor/react";
+import { Environment } from "../../api";
 import prettier from "prettier/standalone";
 import parserBabel from "prettier/plugins/babel";
 import parserEstree from "prettier/plugins/estree";
@@ -17,13 +18,20 @@ interface BodyEditorProps {
     value: string;
     onChange: (value: string) => void;
     initialType?: BodyType;
+    environments: Environment[];
+    selectedEnvId: string | null;
 }
 
 function BodyEditor({
     value,
     onChange,
     initialType = "json",
+    environments,
+    selectedEnvId,
 }: BodyEditorProps) {
+    const editorRef = useRef<any>(null);
+    const monacoRef = useRef<any>(null);
+    const decorationIdsRef = useRef<string[]>([]);
     const [bodyType, setBodyType] = useState<BodyType>(initialType);
     const [formData, setFormData] = useState<FormDataItem[]>([
         { key: "", value: "", enabled: true },
@@ -111,6 +119,82 @@ function BodyEditor({
         }
 
         setBodyType(newType);
+    };
+
+    const updateDecorations = () => {
+        if (!editorRef.current || !monacoRef.current || bodyType !== "json") return;
+
+        const model = editorRef.current.getModel();
+        if (!model) return;
+
+        const text = model.getValue();
+        const newDecorations: any[] = [];
+        const regex = /\{\{([^\}]+)\}\}/g;
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+            const startPos = model.getPositionAt(match.index);
+            const endPos = model.getPositionAt(match.index + match[0].length);
+            const varName = match[1];
+
+            // Resolve value
+            let varValue: string | null = null;
+            if (selectedEnvId) {
+                const env = environments.find(e => e.id === selectedEnvId);
+                const variable = env?.variables.find(v => v.key === varName && v.enabled);
+                varValue = variable ? variable.value : null;
+            }
+
+            const range = new monacoRef.current.Range(
+                startPos.lineNumber,
+                startPos.column,
+                endPos.lineNumber,
+                endPos.column
+            );
+
+            newDecorations.push({
+                range: range,
+                options: {
+                    inlineClassName: varValue !== null ? "monaco-var-valid" : "monaco-var-invalid",
+                    hoverMessage: {
+                        value: varValue !== null ? `**Resolved Value:**\n\n${varValue}` : "Unresolved Variable"
+                    }
+                }
+            });
+        }
+
+        decorationIdsRef.current = editorRef.current.deltaDecorations(
+            decorationIdsRef.current,
+            newDecorations
+        );
+    };
+
+    useEffect(() => {
+        updateDecorations();
+    }, [value, environments, selectedEnvId, bodyType]);
+
+    const handleEditorMount: OnMount = (editor, monaco) => {
+        editorRef.current = editor;
+        monacoRef.current = monaco;
+
+        // Add custom styles for variables
+        const style = document.createElement("style");
+        style.innerHTML = `
+            .monaco-var-valid {
+                color: #059669 !important;
+                background: rgba(16, 185, 129, 0.1);
+                border-bottom: 1px dashed #10b981;
+                font-weight: bold;
+            }
+            .monaco-var-invalid {
+                color: #dc2626 !important;
+                background: rgba(239, 68, 68, 0.1);
+                border-bottom: 1px dashed #ef4444;
+            }
+        `;
+        document.head.appendChild(style);
+
+        updateDecorations();
     };
 
     const updateFormDataItem = (
@@ -259,6 +343,7 @@ function BodyEditor({
                             tabSize: 4,
                             readOnly: false,
                         }}
+                        onMount={handleEditorMount}
                         theme="light"
                     />
                 )}

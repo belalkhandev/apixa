@@ -1,4 +1,6 @@
 import { X } from "lucide-react";
+import VariableInput from "./VariableInput";
+import { Environment } from "../../api";
 
 export interface Header {
     key: string;
@@ -9,6 +11,9 @@ export interface Header {
 interface HeadersEditorProps {
     headers: Header[];
     onChange: (headers: Header[]) => void;
+    environments: Environment[];
+    selectedEnvId: string | null;
+    onUpdateVariable?: (name: string, newValue: string) => void;
 }
 
 const COMMON_HEADERS = [
@@ -24,7 +29,7 @@ const COMMON_VALUES = {
     "Connection": ["keep-alive", "close"],
 };
 
-function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
+function HeadersEditor({ headers, onChange, environments, selectedEnvId, onUpdateVariable }: HeadersEditorProps) {
 
 
     const updateHeader = (index: number, field: keyof Header, value: string | boolean) => {
@@ -65,28 +70,36 @@ function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
                     <span></span>
                 </div>
                 {headers.map((header, index) => (
-                    <div key={index} className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 border-b border-slate-100 last:border-b-0">
-                        <div className="relative group">
-                            <input
-                                type="text"
+                    <div
+                        key={index}
+                        className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-1.5 border-b border-slate-100 last:border-b-0 items-center"
+                        style={{ minHeight: "36px" }}
+                    >
+                        <div className="relative">
+                            <VariableInput
                                 list={`header-keys-${index}`}
                                 value={header.key}
-                                onChange={(e) => updateHeader(index, "key", e.target.value)}
+                                onChange={(val) => updateHeader(index, "key", val)}
                                 placeholder="Key"
-                                className="w-full text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none bg-transparent"
+                                className="w-full h-[28px]"
+                                environments={environments}
+                                selectedEnvId={selectedEnvId}
+                                onUpdateVariable={onUpdateVariable}
                             />
                             <datalist id={`header-keys-${index}`}>
                                 {COMMON_HEADERS.map(h => <option key={h} value={h} />)}
                             </datalist>
                         </div>
-                        <div className="relative group">
-                            <input
-                                type="text"
+                        <div className="relative">
+                            <VariableInput
                                 list={`header-values-${index}`}
                                 value={header.value}
-                                onChange={(e) => updateHeader(index, "value", e.target.value)}
+                                onChange={(val) => updateHeader(index, "value", val)}
                                 placeholder="Value"
-                                className="w-full text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none bg-transparent"
+                                className="w-full h-[28px]"
+                                environments={environments}
+                                selectedEnvId={selectedEnvId}
+                                onUpdateVariable={onUpdateVariable}
                             />
                             <datalist id={`header-values-${index}`}>
                                 {(COMMON_VALUES[header.key as keyof typeof COMMON_VALUES] || []).map(v => (

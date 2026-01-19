@@ -6,8 +6,9 @@ import {
     Trash2,
     Search,
     Plus,
-    ArrowLeft,
     Loader2,
+    Check,
+    X,
 } from "lucide-react";
 import { Collection, TreeItem } from "../../api";
 import TreeItemRenderer from "./TreeItemRenderer";
