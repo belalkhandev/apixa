@@ -99,17 +99,17 @@ export default function TreeItemRenderer({
                     onDragLeave={onDragLeave}
                     onDrop={(e) => onDrop(e, item.id, "request")}
                     className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab transition-all ${isDragging
-                            ? "opacity-50 bg-blue-100"
-                            : activeTabId === item.id
-                                ? "bg-blue-50 text-blue-700"
-                                : "hover:bg-slate-50 text-slate-600"
+                        ? "opacity-50 bg-blue-100"
+                        : activeTabId === item.id
+                            ? "bg-blue-50 text-blue-700"
+                            : "hover:bg-slate-50 text-slate-600"
                         }`}
                     onClick={() => onRequestClick(item.id, item.name, item.method, item.url)}
                 >
                     <span
                         className={`text-[10px] font-bold uppercase w-10 shrink-0 ${activeTabId === item.id
-                                ? methodTextColors[item.method]?.replace("text-", "text-") || "text-blue-600"
-                                : methodTextColors[item.method] || "text-slate-500"
+                            ? methodTextColors[item.method]?.replace("text-", "text-") || "text-blue-600"
+                            : methodTextColors[item.method] || "text-slate-500"
                             }`}
                     >
                         {item.method}
@@ -120,7 +120,7 @@ export default function TreeItemRenderer({
                             e.stopPropagation();
                             onDeleteRequest(item.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-slate-400 hover:text-red-500 transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-slate-400 hover:text-red-500 transition-all cursor-pointer"
                     >
                         <Trash2 size={12} />
                     </button>
@@ -156,15 +156,15 @@ export default function TreeItemRenderer({
                 onDragLeave={onDragLeave}
                 onDrop={(e) => canDrop && onDrop(e, item.id, "folder")}
                 className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors cursor-grab ${isFolderDragging
-                        ? "opacity-50 bg-blue-100"
-                        : isDropInside && canDrop
-                            ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
-                            : "hover:bg-slate-50"
+                    ? "opacity-50 bg-blue-100"
+                    : isDropInside && canDrop
+                        ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
+                        : "hover:bg-slate-50"
                     }`}
             >
                 <button
                     onClick={() => onToggleFolder(item.id)}
-                    className="flex-1 flex items-center gap-2 min-w-0"
+                    className="flex-1 flex items-center gap-2 min-w-0 cursor-pointer"
                 >
                     <ChevronRight
                         size={14}
@@ -177,21 +177,21 @@ export default function TreeItemRenderer({
                 <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0 transition-opacity">
                     <button
                         onClick={() => onNewRequest(item.id)}
-                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-600"
+                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-600 cursor-pointer"
                         title="Add Request"
                     >
                         <Plus size={12} />
                     </button>
                     <button
                         onClick={() => onShowNewFolderInput(item.id)}
-                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-600"
+                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-600 cursor-pointer"
                         title="Add Folder"
                     >
                         <FolderPlus size={12} />
                     </button>
                     <button
                         onClick={() => onDeleteFolder(item.id)}
-                        className="p-1 hover:bg-red-100 rounded text-slate-400 hover:text-red-500"
+                        className="p-1 hover:bg-red-100 rounded text-slate-400 hover:text-red-500 cursor-pointer"
                         title="Delete Folder"
                     >
                         <Trash2 size={12} />
@@ -227,13 +227,13 @@ export default function TreeItemRenderer({
                                 />
                                 <button
                                     onClick={() => onCreateFolder(item.id)}
-                                    className="p-1 hover:bg-slate-200 rounded text-blue-600"
+                                    className="p-1 hover:bg-slate-200 rounded text-blue-600 cursor-pointer"
                                 >
                                     <Check size={14} />
                                 </button>
                                 <button
                                     onClick={() => onShowNewFolderInput(null)}
-                                    className="p-1 hover:bg-slate-200 rounded text-slate-400"
+                                    className="p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
                                 >
                                     <X size={14} />
                                 </button>

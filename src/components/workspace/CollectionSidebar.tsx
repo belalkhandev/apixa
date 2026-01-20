@@ -140,10 +140,10 @@ export default function CollectionSidebar({
                 <div className="flex items-center justify-between mb-3">
                     <button
                         onClick={onHomeClick}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                         title="Back to Home"
                     >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 cursor-pointer">
                             <HomeIcon size={16} className="text-slate-500 hover:text-blue-500" />
                         </div>
                     </button>
@@ -151,7 +151,7 @@ export default function CollectionSidebar({
                     <div className="relative">
                         <button
                             onClick={() => setShowCollectionMenu(!showCollectionMenu)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                         >
                             <MoreHorizontal size={16} className="text-slate-500" />
                         </button>
@@ -162,14 +162,14 @@ export default function CollectionSidebar({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -5, scale: 0.95 }}
                                     transition={{ duration: 0.1 }}
-                                    className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-30"
+                                    className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg overflow-hidden z-30"
                                 >
                                     <button
                                         onClick={() => {
                                             onRenameCollectionStart();
                                             setShowCollectionMenu(false);
                                         }}
-                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
                                     >
                                         <Edit3 size={14} />
                                         Rename
@@ -179,7 +179,7 @@ export default function CollectionSidebar({
                                             setShowCollectionMenu(false);
                                             onDeleteCollection();
                                         }}
-                                        className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                        className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                                     >
                                         <Trash2 size={14} />
                                         Delete
@@ -203,10 +203,10 @@ export default function CollectionSidebar({
                                 if (e.key === "Escape") onCancelEditCollectionName();
                             }}
                         />
-                        <button onClick={onSaveCollectionName} className="text-blue-600 hover:text-blue-700">
+                        <button onClick={onSaveCollectionName} className="text-blue-600 hover:text-blue-700 cursor-pointer">
                             <Check size={16} />
                         </button>
-                        <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600">
+                        <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                             <X size={16} />
                         </button>
                     </div>
@@ -236,7 +236,7 @@ export default function CollectionSidebar({
                 <div className="flex gap-2 mt-3">
                     <button
                         onClick={() => onNewRequest()}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
                     >
                         <Plus size={14} />
                         New Request
@@ -280,7 +280,7 @@ export default function CollectionSidebar({
                                     onCreateFolder();
                                 }
                             }}
-                            className="p-1 hover:bg-slate-200 rounded text-blue-600"
+                            className="p-1 hover:bg-slate-200 rounded text-blue-600 cursor-pointer"
                         >
                             <Check size={14} />
                         </button>
@@ -289,7 +289,7 @@ export default function CollectionSidebar({
                                 onShowNewFolderInput(null);
                                 onSetNewFolderName("");
                             }}
-                            className="p-1 hover:bg-slate-200 rounded text-slate-400"
+                            className="p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
                         >
                             <X size={14} />
                         </button>
@@ -336,7 +336,7 @@ export default function CollectionSidebar({
                 <div className="border-t border-slate-200 flex-shrink-0 relative">
                     <button
                         onClick={() => setShowCollectionSwitcher(!showCollectionSwitcher)}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                             <Layers size={16} className="text-white" />
@@ -360,7 +360,7 @@ export default function CollectionSidebar({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 10 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute bottom-full left-2 right-2 mb-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-40"
+                                className="absolute bottom-full left-2 right-2 mb-1 bg-white border border-slate-200 rounded-lg overflow-hidden z-40"
                             >
                                 <div className="py-1 max-h-48 overflow-y-auto">
                                     {otherCollections.map((col) => (
@@ -370,7 +370,7 @@ export default function CollectionSidebar({
                                                 onSwitchCollection(col.id);
                                                 setShowCollectionSwitcher(false);
                                             }}
-                                            className="w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center gap-3"
+                                            className="w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center gap-3 cursor-pointer"
                                         >
                                             <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center">
                                                 <Layers size={12} className="text-slate-500" />

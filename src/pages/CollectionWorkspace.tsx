@@ -796,7 +796,7 @@ function CollectionWorkspace() {
               {!collectionId && (
                 <button
                   onClick={() => navigate('/')}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mr-1"
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mr-1 cursor-pointer"
                   title="Back to Home"
                 >
                   <Home size={16} />
@@ -806,12 +806,12 @@ function CollectionWorkspace() {
                 <div
                   key={tab.id}
                   className={`flex items-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors whitespace-nowrap cursor-pointer ${activeTabId === tab.id
-                    ? "border-blue-500 text-slate-800"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-blue-500 text-slate-800 bg-blue-50/30"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                     }`}
                 >
                   <div
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 cursor-pointer"
                     onClick={() => setActiveTabId(tab.id)}
                   >
                     <span className={`text-[10px] font-bold ${methodTextColors[tab.method] || "text-slate-600"}`}>
@@ -821,7 +821,7 @@ function CollectionWorkspace() {
                   </div>
                   <button
                     onClick={(e) => handleCloseTab(tab.id, e)}
-                    className="p-0.5 hover:bg-slate-200 rounded transition-colors"
+                    className="p-0.5 hover:bg-slate-200 rounded transition-colors cursor-pointer"
                   >
                     <X size={12} className="text-slate-400" />
                   </button>
@@ -829,11 +829,11 @@ function CollectionWorkspace() {
               ))}
               <button
                 onClick={() => handleNewRequest()}
-                className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <Plus size={16} />
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+              <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
                 <MoreHorizontal size={16} />
               </button>
             </div>
@@ -851,168 +851,170 @@ function CollectionWorkspace() {
           </div>
         </div>
 
-        {activeTab ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="bg-white px-4 py-3 border-b border-slate-200">
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="text"
-                  value={activeTab.name}
-                  onChange={(e) => updateActiveTab({ name: e.target.value })}
-                  placeholder="Request name"
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
-                />
-                {(currentRequest || (activeTabId && activeTabId.startsWith("temp-"))) && (
-                  <button
-                    onClick={collectionId ? handleSaveRequest : () => setShowSaveModal(true)}
-                    disabled={!activeTab.url.trim()}
-                    className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium transition-colors ${activeTab.url.trim()
-                      ? "text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100"
-                      : "text-slate-400 cursor-not-allowed bg-slate-50"
-                      }`}
-                  >
-                    {collectionId ? "Save" : "Save to Collection"}
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <div className="relative">
-                  <select
-                    value={activeTab.method}
-                    onChange={(e) => updateActiveTab({ method: e.target.value as HttpMethod })}
-                    className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[activeTab.method] || "text-slate-600"}`}
-                  >
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="PATCH">PATCH</option>
-                    <option value="DELETE">DELETE</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-
-                <div className="flex-1 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
-                  <VariableInput
-                    value={activeTab.url}
-                    onChange={(url) => updateActiveTab({ url })}
-                    placeholder="Enter request URL (e.g., https://api.example.com/users)"
-                    className="px-4 h-full"
-                    environments={environments}
-                    selectedEnvId={selectedEnvId}
-                    onUpdateVariable={handleUpdateVariable}
+        {
+          activeTab ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="bg-white px-4 py-3 border-b border-slate-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={activeTab.name}
+                    onChange={(e) => updateActiveTab({ name: e.target.value })}
+                    placeholder="Request name"
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
                   />
+                  {(currentRequest || (activeTabId && activeTabId.startsWith("temp-"))) && (
+                    <button
+                      onClick={collectionId ? handleSaveRequest : () => setShowSaveModal(true)}
+                      disabled={!activeTab.url.trim()}
+                      className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeTab.url.trim()
+                        ? "text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                        : "text-slate-400 cursor-not-allowed bg-slate-50"
+                        }`}
+                    >
+                      {collectionId ? "Save" : "Save to Collection"}
+                    </button>
+                  )}
                 </div>
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <select
+                      value={activeTab.method}
+                      onChange={(e) => updateActiveTab({ method: e.target.value as HttpMethod })}
+                      className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[activeTab.method] || "text-slate-600"}`}
+                    >
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="PATCH">PATCH</option>
+                      <option value="DELETE">DELETE</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
 
-                <button
-                  onClick={handleSendRequest}
-                  disabled={activeTab.isLoading}
-                  className="px-5 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {activeTab.isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  Send
-                </button>
+                  <div className="flex-1 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
+                    <VariableInput
+                      value={activeTab.url}
+                      onChange={(url) => updateActiveTab({ url })}
+                      placeholder="Enter request URL (e.g., https://api.example.com/users)"
+                      className="px-4 h-full"
+                      environments={environments}
+                      selectedEnvId={selectedEnvId}
+                      onUpdateVariable={handleUpdateVariable}
+                    />
+                  </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-2">
                   <button
-                    onClick={() => setLayout("vertical")}
-                    className={`p-1.5 rounded transition-colors ${layout === "vertical" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                    title="Vertical Split"
+                    onClick={handleSendRequest}
+                    disabled={activeTab.isLoading}
+                    className="px-5 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   >
-                    <Rows size={14} />
+                    {activeTab.isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    Send
                   </button>
-                  <button
-                    onClick={() => setLayout("horizontal")}
-                    className={`p-1.5 rounded transition-colors ${layout === "horizontal" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                    title="Horizontal Split"
-                  >
-                    <Columns size={14} />
-                  </button>
+
+                  <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-2">
+                    <button
+                      onClick={() => setLayout("vertical")}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "vertical" ? "bg-white text-blue-600 border border-slate-200" : "text-slate-400 hover:text-slate-600"}`}
+                      title="Vertical Split"
+                    >
+                      <Rows size={14} />
+                    </button>
+                    <button
+                      onClick={() => setLayout("horizontal")}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "horizontal" ? "bg-white text-blue-600 border border-slate-200" : "text-slate-400 hover:text-slate-600"}`}
+                      title="Horizontal Split"
+                    >
+                      <Columns size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div
-              ref={containerRef}
-              className={`flex-1 flex ${layout === "vertical" ? "flex-col" : "flex-row"} overflow-hidden bg-slate-50 relative`}
-            >
               <div
-                style={{ flexBasis: `${splitPos}%` }}
-                className="flex flex-col min-w-0 min-h-0 relative"
+                ref={containerRef}
+                className={`flex-1 flex ${layout === "vertical" ? "flex-col" : "flex-row"} overflow-hidden bg-slate-50 relative`}
               >
+                <div
+                  style={{ flexBasis: `${splitPos}%` }}
+                  className="flex flex-col min-w-0 min-h-0 relative"
+                >
 
-                <div className="flex-1 flex flex-col min-h-0 p-4">
-                  <RequestConfigTabs
-                    body={activeTab.body}
-                    onBodyChange={(body) => updateActiveTab({ body })}
-                    headers={activeTab.headers}
-                    onHeadersChange={(headers) => updateActiveTab({ headers })}
-                    params={activeTab.params}
-                    onParamsChange={(params) => updateActiveTab({ params })}
-                    method={activeTab.method}
-                    environments={environments}
-                    selectedEnvId={selectedEnvId}
-                    onUpdateVariable={handleUpdateVariable}
-                    onBodyTypeChange={(bodyType) => updateActiveTab({ bodyType })}
-                    authType={activeTab.authType}
-                    authData={activeTab.authData}
-                    onAuthChange={(authType, authData) => {
-                      updateActiveTab({ authType, authData });
-                    }}
-                    extractRules={activeTab.extractRules}
-                    onExtractRulesChange={(extractRules) => updateActiveTab({ extractRules })}
-                    variant="compact"
-                  />
+                  <div className="flex-1 flex flex-col min-h-0 p-4">
+                    <RequestConfigTabs
+                      body={activeTab.body}
+                      onBodyChange={(body) => updateActiveTab({ body })}
+                      headers={activeTab.headers}
+                      onHeadersChange={(headers) => updateActiveTab({ headers })}
+                      params={activeTab.params}
+                      onParamsChange={(params) => updateActiveTab({ params })}
+                      method={activeTab.method}
+                      environments={environments}
+                      selectedEnvId={selectedEnvId}
+                      onUpdateVariable={handleUpdateVariable}
+                      onBodyTypeChange={(bodyType) => updateActiveTab({ bodyType })}
+                      authType={activeTab.authType}
+                      authData={activeTab.authData}
+                      onAuthChange={(authType, authData) => {
+                        updateActiveTab({ authType, authData });
+                      }}
+                      extractRules={activeTab.extractRules}
+                      onExtractRulesChange={(extractRules) => updateActiveTab({ extractRules })}
+                      variant="compact"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div
-                className={`z-20 flex items-center justify-center shrink-0 hover:bg-blue-400 bg-slate-200 transition-colors
+                <div
+                  className={`z-20 flex items-center justify-center shrink-0 hover:bg-blue-400 bg-slate-200 transition-colors
                     ${layout === "vertical" ? "h-1.5 w-full cursor-row-resize" : "w-1.5 h-full cursor-col-resize"}
                 `}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsResizing(true);
-                }}
-              >
-                {layout === "vertical"
-                  ? <GripHorizontal size={12} className="text-slate-400" />
-                  : <GripVertical size={12} className="text-slate-400" />
-                }
-              </div>
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsResizing(true);
+                  }}
+                >
+                  {layout === "vertical"
+                    ? <GripHorizontal size={12} className="text-slate-400" />
+                    : <GripVertical size={12} className="text-slate-400" />
+                  }
+                </div>
 
-              <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
-                <div className="flex-1 overflow-hidden p-4 pt-2 h-full">
-                  <ResponseViewer
-                    response={activeTab.response}
-                    error={activeTab.error}
-                    isBeautified={isBeautified}
-                    onToggleBeautify={() => setIsBeautified(!isBeautified)}
-                  />
+                <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
+                  <div className="flex-1 overflow-hidden p-4 pt-2 h-full">
+                    <ResponseViewer
+                      response={activeTab.response}
+                      error={activeTab.error}
+                      isBeautified={isBeautified}
+                      onToggleBeautify={() => setIsBeautified(!isBeautified)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-center"
-            >
-              <button
-                onClick={() => handleNewRequest()}
-                className="flex flex-col items-center gap-3 px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-white transition-colors"
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-center"
               >
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Plus size={24} className="text-blue-500" />
-                </div>
-                <span className="text-sm font-medium text-slate-600">New Request</span>
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </main>
+                <button
+                  onClick={() => handleNewRequest()}
+                  className="flex flex-col items-center gap-3 px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-white transition-colors"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Plus size={24} className="text-blue-500" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">New Request</span>
+                </button>
+              </motion.div>
+            </div>
+          )
+        }
+      </main >
 
       <SaveToCollectionModal
         isOpen={showSaveModal}
@@ -1020,7 +1022,7 @@ function CollectionWorkspace() {
         onSave={handleSaveToCollection}
         requestName={activeTab?.name}
       />
-    </div>
+    </div >
   );
 }
 

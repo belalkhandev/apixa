@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FolderPlus } from "lucide-react";
 
@@ -6,11 +6,19 @@ interface NewCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (name: string, description: string) => void;
+  initialData?: { name: string; description: string };
 }
 
-function NewCollectionModal({ isOpen, onClose, onCreate }: NewCollectionModalProps) {
+function NewCollectionModal({ isOpen, onClose, onCreate, initialData }: NewCollectionModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialData?.name || "");
+      setDescription(initialData?.description || "");
+    }
+  }, [isOpen, initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +58,7 @@ function NewCollectionModal({ isOpen, onClose, onCreate }: NewCollectionModalPro
                 <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
                   <FolderPlus size={18} className="text-slate-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-800">New Collection</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{initialData ? "Edit Collection" : "New Collection"}</h2>
               </div>
               <button
                 onClick={onClose}
@@ -70,7 +78,7 @@ function NewCollectionModal({ isOpen, onClose, onCreate }: NewCollectionModalPro
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="My API Collection"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors"
                   autoFocus
                 />
               </div>
@@ -84,24 +92,24 @@ function NewCollectionModal({ isOpen, onClose, onCreate }: NewCollectionModalPro
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Optional description..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors resize-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors resize-none"
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 text-xs">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex-1 px-4 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!name.trim()}
-                  className="flex-1 px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium text-white hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 bg-slate-900 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Collection
+                  {initialData ? "Save Changes" : "Create Collection"}
                 </button>
               </div>
             </form>
