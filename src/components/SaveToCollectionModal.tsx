@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, FolderPlus, Folder, Plus, Check } from "lucide-react";
+import { X, FolderPlus, Plus, ChevronDown } from "lucide-react";
 import { api, Collection } from "../api";
 
 interface SaveToCollectionModalProps {
@@ -115,42 +115,24 @@ function SaveToCollectionModal({
             <div className="p-5">
               {!isCreatingNew && collections.length > 0 ? (
                 <>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Select Collection
-                  </label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
-                    {collections.map((collection) => (
-                      <button
-                        key={collection.id}
-                        onClick={() => setSelectedCollectionId(collection.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all ${
-                          selectedCollectionId === collection.id
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                        }`}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Select Collection
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedCollectionId || ""}
+                        onChange={(e) => setSelectedCollectionId(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-blue-400 transition-colors appearance-none bg-white pr-10"
                       >
-                        <Folder
-                          size={16}
-                          className={
-                            selectedCollectionId === collection.id
-                              ? "text-blue-500"
-                              : "text-slate-400"
-                          }
-                        />
-                        <span
-                          className={`text-sm font-medium ${
-                            selectedCollectionId === collection.id
-                              ? "text-blue-700"
-                              : "text-slate-700"
-                          }`}
-                        >
-                          {collection.name}
-                        </span>
-                        {selectedCollectionId === collection.id && (
-                          <Check size={16} className="ml-auto text-blue-500" />
-                        )}
-                      </button>
-                    ))}
+                        {collections.map((collection) => (
+                          <option key={collection.id} value={collection.id}>
+                            {collection.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
 
                   <button

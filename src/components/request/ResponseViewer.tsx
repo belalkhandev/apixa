@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Copy, Check, WrapText } from "lucide-react";
-import { useState } from "react";
+import { Copy, Check, WrapText, Code, FileText, Globe } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 
 interface ResponseData {
@@ -19,6 +19,8 @@ interface ResponseViewerProps {
     onToggleBeautify: () => void;
 }
 
+type ViewFormat = "json" | "text" | "html";
+
 const statusColors: Record<string, string> = {
     "2": "text-emerald-600 bg-emerald-50",
     "3": "text-blue-600 bg-blue-50",
@@ -29,6 +31,32 @@ const statusColors: Record<string, string> = {
 function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: ResponseViewerProps) {
     const [activeTab, setActiveTab] = useState("Body");
     const [copied, setCopied] = useState(false);
+    const [viewFormat, setViewFormat] = useState<ViewFormat>("json");
+
+    // Detect content type from response headers
+    const detectedFormat = useMemo((): ViewFormat => {
+        if (!response) return "text";
+        const contentType = response.headers["content-type"] || response.headers["Content-Type"] || "";
+        if (contentType.includes("application/json")) return "json";
+        if (contentType.includes("text/html")) return "html";
+        if (contentType.includes("text/xml") || contentType.includes("application/xml")) return "text";
+        // Try to parse as JSON
+        try {
+            JSON.parse(response.body);
+            return "json";
+        } catch {
+            // Check if it looks like HTML
+            if (response.body.trim().startsWith("<!DOCTYPE") || response.body.trim().startsWith("<html")) {
+                return "html";
+            }
+            return "text";
+        }
+    }, [response]);
+
+    // Auto-select format on response change
+    useEffect(() => {
+        setViewFormat(detectedFormat);
+    }, [detectedFormat]);
 
     const formatJson = (text: string): string => {
         try {
@@ -50,6 +78,14 @@ function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: Res
         return statusColors[firstDigit] || "text-slate-600 bg-slate-100";
     };
 
+    const getEditorLanguage = (): string => {
+        switch (viewFormat) {
+            case "json": return "json";
+            case "html": return "html";
+            default: return "plaintext";
+        }
+    };
+
     if (error) {
         return (
             <motion.div
@@ -67,13 +103,19 @@ function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: Res
     }
 
     const tabs = ["Body", "Headers"];
-    const formattedBody = isBeautified ? formatJson(response.body) : response.body;
+    const formattedBody = viewFormat === "json" && isBeautified ? formatJson(response.body) : response.body;
+
+    const formatButtons: { format: ViewFormat; icon: typeof Code; label: string }[] = [
+        { format: "json", icon: Code, label: "JSON" },
+        { format: "text", icon: FileText, label: "Text" },
+        { format: "html", icon: Globe, label: "HTML" },
+    ];
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl flex flex-col h-full overflow-hidden"
+            className="bg-white rounded-xl flex flex-col h-full overflow-hidden border border-slate-200"
         >
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -85,13 +127,34 @@ function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: Res
                     <span className="text-xs text-slate-500">{response.size}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={onToggleBeautify}
-                        className={`p-1.5 rounded transition-colors ${isBeautified ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100"}`}
-                        title={isBeautified ? "Minify" : "Beautify"}
-                    >
-                        <WrapText size={14} />
-                    </button>
+                    {/* Format selector */}
+                    <div className="flex items-center bg-slate-100 rounded-md p-0.5">
+                        {formatButtons.map(({ format, icon: Icon, label }) => (
+                            <button
+                                key={format}
+                                onClick={() => setViewFormat(format)}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                                    viewFormat === format
+                                        ? "bg-white text-blue-600 shadow-sm"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                                title={label}
+                            >
+                                <Icon size={12} />
+                                <span className="hidden sm:inline">{label}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {viewFormat === "json" && (
+                        <button
+                            onClick={onToggleBeautify}
+                            className={`p-1.5 rounded transition-colors ${isBeautified ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100"}`}
+                            title={isBeautified ? "Minify" : "Beautify"}
+                        >
+                            <WrapText size={14} />
+                        </button>
+                    )}
                     <button
                         onClick={() => copyToClipboard(response.body)}
                         className="p-1.5 text-slate-400 hover:bg-slate-100 rounded transition-colors"
@@ -121,36 +184,58 @@ function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: Res
 
             <div className="flex-1 p-4 bg-slate-50 overflow-hidden min-h-0">
                 {activeTab === "Body" && (
-                    <div className="h-full rounded-lg overflow-hidden bg-white">
-                        <Editor
-                            height="100%"
-                            defaultLanguage="json"
-                            language="json"
-                            value={formattedBody}
-                            options={{
-                                minimap: { enabled: false },
-                                fontSize: 13,
-                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                scrollBeyondLastLine: false,
-                                wordWrap: "on",
-                                padding: { top: 10, bottom: 10 },
-                                readOnly: true,
-                                automaticLayout: true,
-                                tabSize: 4,
-                            }}
-                            theme="light"
-                        />
-                    </div>
+                    <>
+                        {viewFormat === "html" ? (
+                            <div className="h-full rounded-lg overflow-auto bg-white border border-slate-200 scrollbar-thin">
+                                <iframe
+                                    srcDoc={response.body}
+                                    title="HTML Preview"
+                                    className="w-full h-full border-0"
+                                    sandbox="allow-same-origin"
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-full rounded-lg overflow-hidden bg-white">
+                                <Editor
+                                    height="100%"
+                                    language={getEditorLanguage()}
+                                    value={formattedBody}
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 13,
+                                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                        scrollBeyondLastLine: false,
+                                        wordWrap: "on",
+                                        wrappingStrategy: "advanced",
+                                        padding: { top: 10, bottom: 10 },
+                                        readOnly: true,
+                                        automaticLayout: true,
+                                        tabSize: 4,
+                                        lineNumbers: viewFormat === "json" ? "on" : "off",
+                                        scrollbar: {
+                                            vertical: "auto",
+                                            horizontal: "auto",
+                                            verticalScrollbarSize: 6,
+                                            horizontalScrollbarSize: 6,
+                                        },
+                                    }}
+                                    theme="light"
+                                />
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {activeTab === "Headers" && (
-                    <div className="h-full overflow-y-auto space-y-1">
-                        {Object.entries(response.headers).map(([key, value]) => (
-                            <div key={key} className="flex gap-2 text-sm">
-                                <span className="font-medium text-slate-700">{key}:</span>
-                                <span className="text-slate-600">{value}</span>
-                            </div>
-                        ))}
+                    <div className="h-full overflow-y-auto bg-white rounded-lg border border-slate-200 p-4 scrollbar-thin">
+                        <div className="space-y-2">
+                            {Object.entries(response.headers).map(([key, value]) => (
+                                <div key={key} className="flex gap-2 text-sm py-1 border-b border-slate-100 last:border-0">
+                                    <span className="font-medium text-slate-700 min-w-[180px]">{key}:</span>
+                                    <span className="text-slate-600 break-all">{value}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

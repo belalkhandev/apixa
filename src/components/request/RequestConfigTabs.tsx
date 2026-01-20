@@ -1,8 +1,11 @@
-import { useState } from "react";
-import BodyEditor from "../shared/BodyEditor";
+import { useState, useEffect } from "react";
+import BodyEditor, { BodyType } from "../shared/BodyEditor";
 import HeadersEditor, { Header } from "../shared/HeadersEditor";
 import ParamsEditor, { Param } from "../shared/ParamsEditor";
+import AuthEditor, { AuthType } from "../shared/AuthEditor";
 import { Environment } from "../../api";
+
+export type { BodyType };
 
 interface RequestConfigTabsProps {
     body: string;
@@ -15,6 +18,14 @@ interface RequestConfigTabsProps {
     environments: Environment[];
     selectedEnvId: string | null;
     onUpdateVariable?: (name: string, newValue: string) => void;
+    onBodyTypeChange?: (type: BodyType) => void;
+    // Auth props (optional)
+    authType?: AuthType;
+    authData?: Record<string, string>;
+    onAuthChange?: (type: AuthType, data: Record<string, string>) => void;
+    // Style variants
+    variant?: "default" | "compact";
+    className?: string;
 }
 
 function RequestConfigTabs({
@@ -28,37 +39,50 @@ function RequestConfigTabs({
     environments,
     selectedEnvId,
     onUpdateVariable,
+    onBodyTypeChange,
+    authType,
+    authData,
+    onAuthChange,
+    variant = "default",
+    className = "",
 }: RequestConfigTabsProps) {
     const [activeTab, setActiveTab] = useState("Body");
-    const tabs = ["Body", "Headers", "Params"];
 
-    // Hide Params for POST, PUT, PATCH if needed, or inversely hide Body for GET?
-    // User asked: "for post and pust request no need to appear params tabs in request body"
-    // Usually POST/PUT *have* body, and Params (query) are less emphasized but possible.
-    // If user means "don't show Params tab when Body is relevant", we can filter `tabs`.
+    // Determine which tabs to show based on method
+    const getVisibleTabs = () => {
+        const hasAuth = onAuthChange !== undefined;
 
-    // Let's interpret "no need to appear params tabs" literally for POST/PUT.
-    const visibleTabs = tabs.filter(tab => {
-        if (tab === "Params" && ["POST", "PUT", "PATCH"].includes(method)) {
-            return false;
+        if (method === "GET") {
+            // GET: Params, Headers, Auth (no Body)
+            return hasAuth ? ["Params", "Headers", "Auth"] : ["Params", "Headers"];
+        } else {
+            // POST, PUT, PATCH, DELETE: Body, Headers, Auth (no Params)
+            return hasAuth ? ["Body", "Headers", "Auth"] : ["Body", "Headers"];
         }
-        return true;
-    });
+    };
 
-    // Ensure active tab is valid
-    if (!visibleTabs.includes(activeTab)) {
-        setActiveTab(visibleTabs[0]);
-    }
+    const visibleTabs = getVisibleTabs();
+
+    // Ensure active tab is valid when method changes
+    useEffect(() => {
+        if (!visibleTabs.includes(activeTab)) {
+            setActiveTab(visibleTabs[0]);
+        }
+    }, [method, visibleTabs, activeTab]);
+
+    const containerClass = variant === "compact"
+        ? "bg-white border border-slate-200 rounded-lg flex flex-col flex-1 min-h-0"
+        : "bg-white rounded-xl border border-slate-200 mb-4 h-full flex flex-col";
 
     return (
-        <div className="bg-white rounded-xl border border-slate-200 mb-4 h-full flex flex-col">
-            <div className="border-b border-slate-100 px-4">
+        <div className={`${containerClass} ${className}`}>
+            <div className={`border-b border-slate-${variant === "compact" ? "200" : "100"} px-4 shrink-0`}>
                 <div className="flex gap-1">
                     {visibleTabs.map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === tab
+                            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === tab
                                 ? "text-blue-600 border-blue-500"
                                 : "text-slate-500 border-transparent hover:text-slate-700"
                                 }`}
@@ -69,14 +93,18 @@ function RequestConfigTabs({
                 </div>
             </div>
 
-            <div className="p-4 flex-1 overflow-auto">
+            <div className="p-4 flex-1 overflow-auto flex flex-col min-h-0">
                 {activeTab === "Body" && (
-                    <BodyEditor
-                        value={body}
-                        onChange={onBodyChange}
-                        environments={environments}
-                        selectedEnvId={selectedEnvId}
-                    />
+                    <div className="flex-1 flex flex-col min-h-0 h-full">
+                        <BodyEditor
+                            value={body}
+                            onChange={onBodyChange}
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
+                            onBodyTypeChange={onBodyTypeChange}
+                            onUpdateVariable={onUpdateVariable}
+                        />
+                    </div>
                 )}
 
                 {activeTab === "Headers" && (
@@ -90,9 +118,22 @@ function RequestConfigTabs({
                 )}
 
                 {activeTab === "Params" && (
-                    <ParamsEditor
-                        params={params}
-                        onChange={onParamsChange}
+                    <div className="flex-1 flex flex-col min-h-0 h-full">
+                        <ParamsEditor
+                            params={params}
+                            onChange={onParamsChange}
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
+                            onUpdateVariable={onUpdateVariable}
+                        />
+                    </div>
+                )}
+
+                {activeTab === "Auth" && onAuthChange && (
+                    <AuthEditor
+                        authType={authType || "none"}
+                        authData={authData || {}}
+                        onChange={onAuthChange}
                         environments={environments}
                         selectedEnvId={selectedEnvId}
                         onUpdateVariable={onUpdateVariable}

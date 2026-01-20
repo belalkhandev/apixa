@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { Environment } from "../../api";
+import VariableInput from "./VariableInput";
 
 export type AuthType = "none" | "bearer" | "basic" | "api-key";
 
@@ -7,9 +9,19 @@ interface AuthEditorProps {
     authType: AuthType;
     authData: Record<string, string>;
     onChange: (type: AuthType, data: Record<string, string>) => void;
+    environments?: Environment[];
+    selectedEnvId?: string | null;
+    onUpdateVariable?: (name: string, newValue: string) => void;
 }
 
-function AuthEditor({ authType, authData, onChange }: AuthEditorProps) {
+function AuthEditor({
+    authType,
+    authData,
+    onChange,
+    environments = [],
+    selectedEnvId = null,
+    onUpdateVariable,
+}: AuthEditorProps) {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleTypeChange = (type: AuthType) => {
@@ -19,6 +31,8 @@ function AuthEditor({ authType, authData, onChange }: AuthEditorProps) {
     const handleDataChange = (key: string, value: string) => {
         onChange(authType, { ...authData, [key]: value });
     };
+
+    const inputClassName = "w-full border border-slate-200 rounded-lg focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400/20 h-[38px]";
 
     return (
         <div className="flex flex-col gap-4">
@@ -39,13 +53,15 @@ function AuthEditor({ authType, authData, onChange }: AuthEditorProps) {
             {authType === "bearer" && (
                 <div className="max-w-md">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Token</label>
-                    <div className="relative">
-                        <input
-                            type="text"
+                    <div className={inputClassName}>
+                        <VariableInput
                             value={authData.token || ""}
-                            onChange={(e) => handleDataChange("token", e.target.value)}
-                            placeholder="Enter bearer token"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400"
+                            onChange={(value) => handleDataChange("token", value)}
+                            placeholder="Enter bearer token or {{variable}}"
+                            className="px-3 h-full"
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
+                            onUpdateVariable={onUpdateVariable}
                         />
                     </div>
                 </div>
@@ -55,27 +71,35 @@ function AuthEditor({ authType, authData, onChange }: AuthEditorProps) {
                 <div className="max-w-md space-y-3">
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Username</label>
-                        <input
-                            type="text"
-                            value={authData.username || ""}
-                            onChange={(e) => handleDataChange("username", e.target.value)}
-                            placeholder="Username"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400"
-                        />
+                        <div className={inputClassName}>
+                            <VariableInput
+                                value={authData.username || ""}
+                                onChange={(value) => handleDataChange("username", value)}
+                                placeholder="Username or {{variable}}"
+                                className="px-3 h-full"
+                                environments={environments}
+                                selectedEnvId={selectedEnvId}
+                                onUpdateVariable={onUpdateVariable}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Password</label>
                         <div className="relative">
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                value={authData.password || ""}
-                                onChange={(e) => handleDataChange("password", e.target.value)}
-                                placeholder="Password"
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400 pr-10"
-                            />
+                            <div className={`${inputClassName} pr-10`}>
+                                <VariableInput
+                                    value={authData.password || ""}
+                                    onChange={(value) => handleDataChange("password", value)}
+                                    placeholder="Password or {{variable}}"
+                                    className="px-3 h-full"
+                                    environments={environments}
+                                    selectedEnvId={selectedEnvId}
+                                    onUpdateVariable={onUpdateVariable}
+                                />
+                            </div>
                             <button
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-20"
                             >
                                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -88,23 +112,31 @@ function AuthEditor({ authType, authData, onChange }: AuthEditorProps) {
                 <div className="max-w-md space-y-3">
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Key</label>
-                        <input
-                            type="text"
-                            value={authData.key || ""}
-                            onChange={(e) => handleDataChange("key", e.target.value)}
-                            placeholder="Key"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400"
-                        />
+                        <div className={inputClassName}>
+                            <VariableInput
+                                value={authData.key || ""}
+                                onChange={(value) => handleDataChange("key", value)}
+                                placeholder="Key or {{variable}}"
+                                className="px-3 h-full"
+                                environments={environments}
+                                selectedEnvId={selectedEnvId}
+                                onUpdateVariable={onUpdateVariable}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
-                        <input
-                            type="text"
-                            value={authData.value || ""}
-                            onChange={(e) => handleDataChange("value", e.target.value)}
-                            placeholder="Value"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400"
-                        />
+                        <div className={inputClassName}>
+                            <VariableInput
+                                value={authData.value || ""}
+                                onChange={(value) => handleDataChange("value", value)}
+                                placeholder="Value or {{variable}}"
+                                className="px-3 h-full"
+                                environments={environments}
+                                selectedEnvId={selectedEnvId}
+                                onUpdateVariable={onUpdateVariable}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Add to</label>

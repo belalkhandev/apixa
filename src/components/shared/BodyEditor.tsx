@@ -5,8 +5,9 @@ import { Environment } from "../../api";
 import prettier from "prettier/standalone";
 import parserBabel from "prettier/plugins/babel";
 import parserEstree from "prettier/plugins/estree";
+import VariableInput from "./VariableInput";
 
-type BodyType = "json" | "text" | "formdata";
+export type BodyType = "json" | "text" | "formdata";
 
 interface FormDataItem {
     key: string;
@@ -20,6 +21,8 @@ interface BodyEditorProps {
     initialType?: BodyType;
     environments: Environment[];
     selectedEnvId: string | null;
+    onBodyTypeChange?: (type: BodyType) => void;
+    onUpdateVariable?: (name: string, newValue: string) => void;
 }
 
 function BodyEditor({
@@ -28,6 +31,8 @@ function BodyEditor({
     initialType = "json",
     environments,
     selectedEnvId,
+    onBodyTypeChange,
+    onUpdateVariable,
 }: BodyEditorProps) {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<any>(null);
@@ -49,6 +54,11 @@ function BodyEditor({
             }
         }
     }, [value, bodyType]);
+
+    // Notify parent of initial body type
+    useEffect(() => {
+        onBodyTypeChange?.(bodyType);
+    }, []);
 
     // Convert JSON to Form Data
     const jsonToFormData = (jsonStr: string): FormDataItem[] => {
@@ -119,6 +129,7 @@ function BodyEditor({
         }
 
         setBodyType(newType);
+        onBodyTypeChange?.(newType);
     };
 
     const updateDecorations = () => {
@@ -298,23 +309,27 @@ function BodyEditor({
                                 key={index}
                                 className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 border-b border-slate-100 last:border-b-0"
                             >
-                                <input
-                                    type="text"
+                                <VariableInput
                                     value={item.key}
-                                    onChange={(e) =>
-                                        updateFormDataItem(index, "key", e.target.value)
+                                    onChange={(newValue) =>
+                                        updateFormDataItem(index, "key", newValue)
                                     }
                                     placeholder="key"
-                                    className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none font-mono"
+                                    className="text-sm font-mono"
+                                    environments={environments}
+                                    selectedEnvId={selectedEnvId}
+                                    onUpdateVariable={onUpdateVariable}
                                 />
-                                <input
-                                    type="text"
+                                <VariableInput
                                     value={item.value}
-                                    onChange={(e) =>
-                                        updateFormDataItem(index, "value", e.target.value)
+                                    onChange={(newValue) =>
+                                        updateFormDataItem(index, "value", newValue)
                                     }
                                     placeholder="value"
-                                    className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none font-mono"
+                                    className="text-sm font-mono"
+                                    environments={environments}
+                                    selectedEnvId={selectedEnvId}
+                                    onUpdateVariable={onUpdateVariable}
                                 />
                                 <button
                                     onClick={() => removeFormDataItem(index)}

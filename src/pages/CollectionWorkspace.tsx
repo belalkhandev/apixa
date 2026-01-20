@@ -12,29 +12,57 @@ import {
   Rows,
   GripVertical,
   GripHorizontal,
+  Home,
 } from "lucide-react";
 import EnvironmentManager from "../components/EnvironmentManager";
-import BodyEditor from "../components/shared/BodyEditor";
 import ResponseViewer from "../components/request/ResponseViewer";
-import HeadersEditor from "../components/shared/HeadersEditor";
-import AuthEditor, { AuthType } from "../components/shared/AuthEditor";
-import ParamsEditor, { Param } from "../components/shared/ParamsEditor";
-import { api, Collection, TreeItem, Environment, Request as ApiRequest, ResponseData } from "../api";
+import RequestConfigTabs, { BodyType } from "../components/request/RequestConfigTabs";
+import { AuthType } from "../components/shared/AuthEditor";
+import { Param } from "../components/shared/ParamsEditor";
+import { api, Collection, TreeItem, Request as ApiRequest, ResponseData } from "../api";
 import CollectionSidebar from "../components/workspace/CollectionSidebar";
+import SaveToCollectionModal from "../components/SaveToCollectionModal";
 import { methodTextColors } from "../constants";
 import VariableInput from "../components/shared/VariableInput";
+import { useEnvironment } from "../hooks";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-interface OpenTab {
+interface TabState {
   id: string;
   name: string;
   method: HttpMethod;
   url: string;
   isNew?: boolean;
+  // Request-specific state
+  body: string;
+  bodyType: BodyType;
+  headers: { key: string; value: string; enabled: boolean }[];
+  params: Param[];
+  authType: AuthType;
+  authData: Record<string, string>;
+  // Response state
+  response: ResponseData | null;
+  error: string | null;
+  isLoading: boolean;
 }
 
-
+const createDefaultTabState = (id: string, name: string = "New Request", method: HttpMethod = "GET", url: string = "", isNew: boolean = false): TabState => ({
+  id,
+  name,
+  method,
+  url,
+  isNew,
+  body: "",
+  bodyType: "json",
+  headers: [{ key: "", value: "", enabled: true }],
+  params: [{ key: "", value: "", param_type: "query", description: "", enabled: true }],
+  authType: "none",
+  authData: {},
+  response: null,
+  error: null,
+  isLoading: false,
+});
 
 interface FolderOpenState {
   [key: string]: boolean;
@@ -48,45 +76,51 @@ function CollectionWorkspace() {
   const { collectionId } = useParams();
   const navigate = useNavigate();
 
+  // Environment hook
+  const {
+    environments,
+    selectedEnvId,
+    setSelectedEnvId,
+    handleCreateEnv,
+    handleUpdateEnv,
+    handleDeleteEnv,
+    handleUpdateVariable,
+    replaceEnvVariables,
+  } = useEnvironment();
+
   // Data state
   const [collections, setCollections] = useState<Collection[]>([]);
   const [treeItems, setTreeItems] = useState<TreeItem[]>([]);
-  const [environments, setEnvironments] = useState<Environment[]>([]);
   const [currentRequest, setCurrentRequest] = useState<ApiRequest | null>(null);
 
   // UI state
   const [folderOpenState, setFolderOpenState] = useState<FolderOpenState>({ endpoints: true });
-  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+  const [openTabs, setOpenTabs] = useState<TabState[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
-  const [activeRequestTab, setActiveRequestTab] = useState("Params");
-  const [method, setMethod] = useState<HttpMethod>("GET");  // Request state
-  const [requestUrl, setRequestUrl] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [requestBody, setRequestBody] = useState("");
-  const [headers, setHeaders] = useState<{ key: string; value: string; enabled: boolean }[]>([
-    { key: "", value: "", enabled: true },
-  ]);
-  const [params, setParams] = useState<Param[]>([
-    { key: "", value: "", param_type: "query", description: "", enabled: true },
-  ]);
-  // Auth state
-  const [authType, setAuthType] = useState<AuthType>("none");
-  const [authData, setAuthData] = useState<Record<string, string>>({});
-  const [response, setResponse] = useState<ResponseData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isBeautified, setIsBeautified] = useState(true);
+
+  // Get active tab helper
+  const activeTab = openTabs.find(t => t.id === activeTabId);
+
+  // Helper to update active tab state
+  const updateActiveTab = (updates: Partial<TabState>) => {
+    if (!activeTabId) return;
+    setOpenTabs(tabs => tabs.map(tab =>
+      tab.id === activeTabId ? { ...tab, ...updates } : tab
+    ));
+  };
+
+  // UI state
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [showNewFolderInput, setShowNewFolderInput] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
-  const [requestName, setRequestName] = useState("New Request");
   const [isEditingCollectionName, setIsEditingCollectionName] = useState(false);
   const [editedCollectionName, setEditedCollectionName] = useState("");
 
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   // Layout state
   const [layout, setLayout] = useState<"vertical" | "horizontal">("vertical");
@@ -132,7 +166,6 @@ function CollectionWorkspace() {
   // Load collections on mount
   useEffect(() => {
     loadCollections();
-    loadEnvironments();
   }, []);
 
   // Load collection tree when collectionId changes
@@ -142,24 +175,22 @@ function CollectionWorkspace() {
     }
   }, [collectionId]);
 
+  // Auto-create new tab in quick-request mode
+  useEffect(() => {
+    if (!collectionId && openTabs.length === 0) {
+      const tempId = `temp-${Date.now()}`;
+      const newTab = createDefaultTabState(tempId, "New Request", "GET", "", true);
+      setOpenTabs([newTab]);
+      setActiveTabId(tempId);
+    }
+  }, [collectionId]);
+
   const loadCollections = async () => {
     try {
       const data = await api.getCollections();
       setCollections(data);
     } catch (err) {
       console.error("Failed to load collections:", err);
-    }
-  };
-
-  const loadEnvironments = async () => {
-    try {
-      const data = await api.getEnvironments();
-      setEnvironments(data);
-      if (data.length > 0 && !selectedEnvId) {
-        setSelectedEnvId(data[0].id);
-      }
-    } catch (err) {
-      console.error("Failed to load environments:", err);
     }
   };
 
@@ -251,36 +282,41 @@ function CollectionWorkspace() {
 
   const handleRequestClick = async (requestId: string, requestName: string, requestMethod: string, requestUrl: string) => {
     const existingTab = openTabs.find((t) => t.id === requestId);
-    if (!existingTab) {
-      setOpenTabs([...openTabs, {
-        id: requestId,
-        name: requestName,
-        method: requestMethod as HttpMethod,
-        url: requestUrl
-      }]);
-    }
-    setActiveTabId(requestId);
-    setMethod(requestMethod as HttpMethod);
-    setRequestUrl(requestUrl);
-    setRequestName(requestName);
-    setResponse(null);
-    setError(null);
 
-    // Load full request details
+    if (existingTab) {
+      // Tab already open, just switch to it
+      setActiveTabId(requestId);
+      setCurrentRequest(null);
+      // Load current request for saving purposes
+      try {
+        const fullRequest = await api.getRequest(requestId);
+        setCurrentRequest(fullRequest);
+      } catch (err) {
+        console.error("Failed to load request:", err);
+      }
+      return;
+    }
+
+    // Load full request details and create new tab
     try {
       const fullRequest = await api.getRequest(requestId);
       setCurrentRequest(fullRequest);
-      setRequestBody(fullRequest.body || "");
-      setHeaders(fullRequest.headers.length > 0
+
+      const newTab = createDefaultTabState(requestId, requestName, requestMethod as HttpMethod, requestUrl);
+      newTab.body = fullRequest.body || "";
+      newTab.headers = fullRequest.headers.length > 0
         ? fullRequest.headers.map(h => ({ key: h.key, value: h.value, enabled: h.enabled }))
-        : [{ key: "", value: "", enabled: true }]);
-      setParams(fullRequest.params.map(p => ({
+        : [{ key: "", value: "", enabled: true }];
+      newTab.params = fullRequest.params.map(p => ({
         key: p.key,
         value: p.value,
         param_type: p.param_type,
         description: p.description || "",
         enabled: p.enabled
-      })));
+      }));
+
+      setOpenTabs([...openTabs, newTab]);
+      setActiveTabId(requestId);
     } catch (err) {
       console.error("Failed to load request:", err);
     }
@@ -291,48 +327,20 @@ function CollectionWorkspace() {
     const newTabs = openTabs.filter((t) => t.id !== tabId);
     setOpenTabs(newTabs);
     if (activeTabId === tabId) {
-      setActiveTabId(newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null);
-      if (newTabs.length > 0) {
-        const lastTab = newTabs[newTabs.length - 1];
-        setMethod(lastTab.method);
-        setRequestUrl(lastTab.url);
-        setRequestName(lastTab.name);
-      } else {
+      const newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+      setActiveTabId(newActiveId);
+      if (!newActiveId) {
         setCurrentRequest(null);
-        setRequestBody("");
-        setHeaders([{ key: "", value: "", enabled: true }]);
-        setParams([]);
       }
-      setResponse(null);
-      setError(null);
     }
   };
 
   const handleNewRequest = () => {
-    // Determine a temporary ID
     const tempId = `temp-${Date.now()}`;
-
-    const newTab: OpenTab = {
-      id: tempId,
-      name: "New Request",
-      method: "GET",
-      url: "",
-      isNew: true,
-    };
-
+    const newTab = createDefaultTabState(tempId, "New Request", "GET", "", true);
     setOpenTabs([...openTabs, newTab]);
     setActiveTabId(tempId);
-    setCurrentRequest(null); // No backend request yet
-    setMethod("GET");
-    setRequestUrl("");
-    setRequestName("New Request");
-    setRequestBody("");
-    setHeaders([{ key: "", value: "", enabled: true }]);
-    setParams([{ key: "", value: "", param_type: "query", description: "", enabled: true }]);
-    setResponse(null);
-    setError(null);
-    setAuthType("none");
-    setAuthData({});
+    setCurrentRequest(null);
   };
 
   const handleCreateFolder = async (parentId?: string) => {
@@ -375,22 +383,22 @@ function CollectionWorkspace() {
   };
 
   const handleSaveRequest = async () => {
-    if (!requestUrl.trim()) {
-      setError("Please enter a URL before saving");
+    if (!activeTab || !activeTab.url.trim()) {
+      updateActiveTab({ error: "Please enter a URL before saving" });
       return;
     }
 
     try {
       let savedRequest: ApiRequest | null = null;
 
-      // Prepare data
-      const headersList = headers.filter(h => h.key.trim() !== "").map(h => ({
+      // Prepare data from active tab
+      const headersList = activeTab.headers.filter(h => h.key.trim() !== "").map(h => ({
         key: h.key,
         value: h.value,
         enabled: h.enabled
       }));
 
-      const paramsList = params.filter(p => p.key.trim() !== "").map(p => ({
+      const paramsList = activeTab.params.filter(p => p.key.trim() !== "").map(p => ({
         key: p.key,
         value: p.value,
         param_type: p.param_type || "query",
@@ -402,10 +410,10 @@ function CollectionWorkspace() {
       if (currentRequest) {
         savedRequest = await api.updateRequest(
           currentRequest.id,
-          requestName,
-          method,
-          requestUrl,
-          requestBody || null,
+          activeTab.name,
+          activeTab.method,
+          activeTab.url,
+          activeTab.body || null,
           headersList,
           paramsList
         );
@@ -413,26 +421,19 @@ function CollectionWorkspace() {
         // Create new request
         savedRequest = await api.createRequest(
           collectionId,
-          requestName,
-          method,
-          requestUrl,
-          undefined // folderId - would need to track this in state if needed
+          activeTab.name,
+          activeTab.method,
+          activeTab.url,
+          undefined
         );
 
-        // We might also need to update headers/body for the newly created request
-        // since createRequest signature might not accept everything.
-        // Assuming createRequest only takes basic info based on previous signature.
-        // If createRequest is minimal, we call updateRequest immediately.
-        // Let's verify standard createRequest if possible, but based on prev code it was simple.
-        // Actually, checking lines 292-298, createRequest takes (colId, name, method, url, folderId).
-        // So we MUST update it immediately to save headers/body/params.
         if (savedRequest) {
           savedRequest = await api.updateRequest(
             savedRequest.id,
-            requestName,
-            method,
-            requestUrl,
-            requestBody || null,
+            activeTab.name,
+            activeTab.method,
+            activeTab.url,
+            activeTab.body || null,
             headersList,
             paramsList
           );
@@ -448,22 +449,15 @@ function CollectionWorkspace() {
           const tempId = activeTabId;
           setOpenTabs(openTabs.map(t =>
             t.id === tempId
-              ? { ...t, id: savedRequest!.id, name: requestName, method, url: requestUrl, isNew: false }
+              ? { ...t, id: savedRequest!.id, isNew: false }
               : t
           ));
           setActiveTabId(savedRequest.id);
-        } else {
-          // Update existing tab info
-          setOpenTabs(openTabs.map(t =>
-            t.id === savedRequest!.id
-              ? { ...t, name: requestName, method, url: requestUrl }
-              : t
-          ));
         }
       }
     } catch (err) {
       console.error("Failed to save request:", err);
-      setError("Failed to save request");
+      updateActiveTab({ error: "Failed to save request" });
     }
   };
 
@@ -476,24 +470,22 @@ function CollectionWorkspace() {
   };
 
   const handleSendRequest = async () => {
-    if (!requestUrl) {
-      setError("Please enter a URL");
+    if (!activeTab || !activeTab.url) {
+      updateActiveTab({ error: "Please enter a URL" });
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setResponse(null);
+    updateActiveTab({ isLoading: true, error: null, response: null });
 
     try {
       // 1. Resolve basic URL variables
-      let resolvedUrl = replaceEnvVariables(requestUrl);
+      let resolvedUrl = replaceEnvVariables(activeTab.url);
 
       // 2. Append Query Params
-      const activeParams = params.filter(p => p.enabled && p.key.trim() !== "");
-      if (activeParams.length > 0) {
+      const tabParams = activeTab.params.filter(p => p.enabled && p.key.trim() !== "");
+      if (tabParams.length > 0) {
         const urlObj = new URL(resolvedUrl.startsWith("http") ? resolvedUrl : `http://${resolvedUrl}`);
-        activeParams.forEach(p => {
+        tabParams.forEach(p => {
           const key = replaceEnvVariables(p.key);
           const value = replaceEnvVariables(p.value);
           urlObj.searchParams.append(key, value);
@@ -502,193 +494,200 @@ function CollectionWorkspace() {
         if (resolvedUrl.startsWith("http")) {
           resolvedUrl = urlObj.toString();
         } else {
-          const queryString = activeParams.map(p =>
+          const queryString = tabParams.map(p =>
             `${encodeURIComponent(replaceEnvVariables(p.key))}=${encodeURIComponent(replaceEnvVariables(p.value))}`
           ).join("&");
           resolvedUrl = `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}${queryString}`;
         }
       }
 
-      const resolvedBody = replaceEnvVariables(requestBody);
+      let resolvedBody = replaceEnvVariables(activeTab.body);
 
       const requestHeaders: Record<string, string> = {};
-      headers.forEach((h) => {
+      activeTab.headers.forEach((h) => {
         if (h.key && h.value) {
           requestHeaders[replaceEnvVariables(h.key)] = replaceEnvVariables(h.value);
         }
       });
 
-      if (method !== "GET" && method !== "DELETE" && resolvedBody) {
+      // Apply authentication
+      if (activeTab.authType === "bearer" && activeTab.authData.token) {
+        const token = replaceEnvVariables(activeTab.authData.token);
+        requestHeaders["Authorization"] = `Bearer ${token}`;
+      } else if (activeTab.authType === "basic" && activeTab.authData.username) {
+        const username = replaceEnvVariables(activeTab.authData.username || "");
+        const password = replaceEnvVariables(activeTab.authData.password || "");
+        const credentials = btoa(`${username}:${password}`);
+        requestHeaders["Authorization"] = `Basic ${credentials}`;
+      } else if (activeTab.authType === "api-key" && activeTab.authData.key && activeTab.authData.value) {
+        const key = replaceEnvVariables(activeTab.authData.key);
+        const value = replaceEnvVariables(activeTab.authData.value);
+        if (activeTab.authData.addTo === "query") {
+          const separator = resolvedUrl.includes("?") ? "&" : "?";
+          resolvedUrl = `${resolvedUrl}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+        } else {
+          requestHeaders[key] = value;
+        }
+      }
+
+      // Handle body and Content-Type based on bodyType
+      if (activeTab.method !== "GET" && activeTab.method !== "DELETE" && resolvedBody) {
         if (!requestHeaders["Content-Type"]) {
-          requestHeaders["Content-Type"] = "application/json";
+          if (activeTab.bodyType === "formdata") {
+            try {
+              const parsed = JSON.parse(resolvedBody);
+              if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+                resolvedBody = Object.entries(parsed)
+                  .map(([key, value]) => {
+                    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+                    return `${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`;
+                  })
+                  .join("&");
+              }
+            } catch {
+              // If not valid JSON, send as-is
+            }
+            requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+          } else if (activeTab.bodyType === "text") {
+            requestHeaders["Content-Type"] = "text/plain";
+          } else {
+            requestHeaders["Content-Type"] = "application/json";
+          }
         }
       }
 
       const res = await api.sendRequest({
-        method,
+        method: activeTab.method,
         url: resolvedUrl,
         headers: requestHeaders,
-        body: (method !== "GET" && method !== "DELETE") ? resolvedBody : null
+        body: (activeTab.method !== "GET" && activeTab.method !== "DELETE") ? resolvedBody : null
       });
 
-      setResponse({
-        status: res.status,
-        statusText: res.statusText,
-        time: res.time,
-        size: formatBytes(typeof res.size === 'number' ? res.size : parseInt(res.size)), // Handle number or string
-        headers: res.headers,
-        body: res.body,
+      updateActiveTab({
+        isLoading: false,
+        response: {
+          status: res.status,
+          statusText: res.statusText,
+          time: res.time,
+          size: formatBytes(typeof res.size === 'number' ? res.size : parseInt(res.size)),
+          headers: res.headers,
+          body: res.body,
+        }
       });
     } catch (err) {
       console.log(err);
-      setError(err instanceof Error ? err.message : "Request failed");
-    } finally {
-      setIsLoading(false);
+      updateActiveTab({
+        isLoading: false,
+        error: err instanceof Error ? err.message : "Request failed"
+      });
     }
   };
 
+  const handleSaveToCollection = async (targetCollectionId: string) => {
+    if (!activeTab || !activeTab.url.trim()) return;
 
-
-
-
-
-
-  // Get tabs based on HTTP method
-  const getTabsForMethod = (method: HttpMethod): string[] => {
-    if (method === "GET") {
-      return ["Params", "Headers", "Auth"];
-    }
-    // User requested to hide Params tab for POST/PUT requests
-    return ["Body", "Headers", "Auth"];
-  };
-
-
-
-
-
-  const activeTab = openTabs.find((t) => t.id === activeTabId);
-
-  const handleCreateEnv = async (envData: { name: string; variables: { key: string; value: string; enabled: boolean }[] }) => {
     try {
-      const newEnv = await api.createEnvironment(envData.name, envData.variables);
-      setEnvironments([...environments, newEnv]);
-      setSelectedEnvId(newEnv.id);
-    } catch (err) {
-      console.error("Failed to create environment:", err);
-    }
-  };
+      const headersList = activeTab.headers.filter(h => h.key.trim() !== "").map(h => ({
+        key: h.key,
+        value: h.value,
+        enabled: h.enabled
+      }));
 
-  const handleUpdateEnv = async (envData: { id: string; name: string; variables: { key: string; value: string; enabled: boolean }[] }) => {
-    try {
-      const updated = await api.updateEnvironment(envData.id, envData.name, envData.variables);
-      setEnvironments(environments.map((e) => (e.id === updated.id ? updated : e)));
-    } catch (err) {
-      console.error("Failed to update environment:", err);
-    }
-  };
+      const paramsList = activeTab.params.filter(p => p.key.trim() !== "").map(p => ({
+        key: p.key,
+        value: p.value,
+        param_type: p.param_type || "query",
+        description: p.description || null,
+        enabled: p.enabled
+      }));
 
-  const handleDeleteEnv = async (envId: string) => {
-    try {
-      await api.deleteEnvironment(envId);
-      setEnvironments(environments.filter((e) => e.id !== envId));
-      if (selectedEnvId === envId) {
-        setSelectedEnvId(null);
-      }
-    } catch (err) {
-      console.error("Failed to delete environment:", err);
-    }
-  };
-
-  const replaceEnvVariables = (text: string): string => {
-    if (!selectedEnvId) return text;
-    const selectedEnv = environments.find((e) => e.id === selectedEnvId);
-    if (!selectedEnv) return text;
-
-    let result = text;
-    selectedEnv.variables.forEach((v) => {
-      if (v.enabled && v.key) {
-        result = result.replace(new RegExp(`\\{\\{${v.key}\\}\\}`, "g"), v.value);
-      }
-    });
-    return result;
-  };
-
-  const handleUpdateVariable = async (name: string, newValue: string) => {
-    if (!selectedEnvId) return;
-    const env = environments.find(e => e.id === selectedEnvId);
-    if (!env) return;
-
-    // Check if variable exists
-    const existingVar = env.variables.find(v => v.key === name);
-
-    let updatedVariables;
-    if (existingVar) {
-      // Update existing variable
-      updatedVariables = env.variables.map(v =>
-        v.key === name ? { ...v, value: newValue } : v
+      let savedRequest = await api.createRequest(
+        targetCollectionId,
+        activeTab.name,
+        activeTab.method,
+        activeTab.url,
+        undefined
       );
-    } else {
-      // Create new variable
-      updatedVariables = [
-        ...env.variables,
-        { key: name, value: newValue, enabled: true }
-      ];
-    }
 
-    try {
-      await api.updateEnvironment(env.id, env.name, updatedVariables);
-      setEnvironments(environments.map(e =>
-        e.id === env.id ? { ...e, variables: updatedVariables } : e
-      ));
+      if (savedRequest) {
+        savedRequest = await api.updateRequest(
+          savedRequest.id,
+          activeTab.name,
+          activeTab.method,
+          activeTab.url,
+          activeTab.body || null,
+          headersList,
+          paramsList
+        );
+      }
+
+      setShowSaveModal(false);
+      navigate(`/collection/${targetCollectionId}`);
     } catch (err) {
-      console.error("Failed to update variable:", err);
+      console.error("Failed to save to collection:", err);
     }
   };
+
+
+
 
   return (
     <div className="h-screen bg-slate-50 flex">
-      <CollectionSidebar
-        collection={currentCollection || null}
-        treeItems={treeItems}
-        isLoading={isDataLoading}
-        activeTabId={activeTabId}
-        folderOpenState={folderOpenState}
-        draggedItemId={draggedItemId}
-        dragOverFolderId={dragOverFolderId}
-        showNewFolderInput={showNewFolderInput}
-        newFolderName={newFolderName}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onToggleFolder={handleToggleFolder}
-        onRequestClick={handleRequestClick}
-        onNewRequest={handleNewRequest}
-        onCreateFolder={handleCreateFolder}
-        onDeleteFolder={handleDeleteFolder}
-        onDeleteRequest={handleDeleteRequest}
-        onShowNewFolderInput={setShowNewFolderInput}
-        onSetNewFolderName={setNewFolderName}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onHomeClick={() => navigate('/')}
-        isEditingCollectionName={isEditingCollectionName}
-        editedCollectionName={editedCollectionName}
-        onSetEditedCollectionName={setEditedCollectionName}
-        onSaveCollectionName={handleUpdateCollectionName}
-        onCancelEditCollectionName={() => setIsEditingCollectionName(false)}
-        onRenameCollectionStart={() => {
-          setEditedCollectionName(currentCollection?.name || "");
-          setIsEditingCollectionName(true);
-        }}
-        onDeleteCollection={handleDeleteCollection}
-      />
+      {collectionId && (
+        <CollectionSidebar
+          collection={currentCollection || null}
+          collections={collections}
+          treeItems={treeItems}
+          isLoading={isDataLoading}
+          activeTabId={activeTabId}
+          folderOpenState={folderOpenState}
+          draggedItemId={draggedItemId}
+          dragOverFolderId={dragOverFolderId}
+          showNewFolderInput={showNewFolderInput}
+          newFolderName={newFolderName}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onToggleFolder={handleToggleFolder}
+          onRequestClick={handleRequestClick}
+          onNewRequest={handleNewRequest}
+          onCreateFolder={handleCreateFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onDeleteRequest={handleDeleteRequest}
+          onShowNewFolderInput={setShowNewFolderInput}
+          onSetNewFolderName={setNewFolderName}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onHomeClick={() => navigate('/')}
+          onSwitchCollection={(id) => navigate(`/collection/${id}`)}
+          isEditingCollectionName={isEditingCollectionName}
+          editedCollectionName={editedCollectionName}
+          onSetEditedCollectionName={setEditedCollectionName}
+          onSaveCollectionName={handleUpdateCollectionName}
+          onCancelEditCollectionName={() => setIsEditingCollectionName(false)}
+          onRenameCollectionStart={() => {
+            setEditedCollectionName(currentCollection?.name || "");
+            setIsEditingCollectionName(true);
+          }}
+          onDeleteCollection={handleDeleteCollection}
+        />
+      )}
 
       <main className="flex-1 flex flex-col bg-slate-50">
         <div className="bg-white border-b border-slate-200">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+              {!collectionId && (
+                <button
+                  onClick={() => navigate('/')}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mr-1"
+                  title="Back to Home"
+                >
+                  <Home size={16} />
+                </button>
+              )}
               {openTabs.map((tab) => (
                 <div
                   key={tab.id}
@@ -699,7 +698,7 @@ function CollectionWorkspace() {
                 >
                   <div
                     className="flex items-center gap-2"
-                    onClick={() => handleRequestClick(tab.id, tab.name, tab.method, tab.url)}
+                    onClick={() => setActiveTabId(tab.id)}
                   >
                     <span className={`text-[10px] font-bold ${methodTextColors[tab.method] || "text-slate-600"}`}>
                       {tab.method}
@@ -744,30 +743,30 @@ function CollectionWorkspace() {
               <div className="flex items-center gap-2 mb-2">
                 <input
                   type="text"
-                  value={requestName}
-                  onChange={(e) => setRequestName(e.target.value)}
+                  value={activeTab.name}
+                  onChange={(e) => updateActiveTab({ name: e.target.value })}
                   placeholder="Request name"
                   className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
                 />
                 {(currentRequest || (activeTabId && activeTabId.startsWith("temp-"))) && (
                   <button
-                    onClick={handleSaveRequest}
-                    disabled={!requestUrl.trim()}
-                    className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium transition-colors ${requestUrl.trim()
+                    onClick={collectionId ? handleSaveRequest : () => setShowSaveModal(true)}
+                    disabled={!activeTab.url.trim()}
+                    className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium transition-colors ${activeTab.url.trim()
                       ? "text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100"
                       : "text-slate-400 cursor-not-allowed bg-slate-50"
                       }`}
                   >
-                    Save
+                    {collectionId ? "Save" : "Save to Collection"}
                   </button>
                 )}
               </div>
               <div className="flex gap-2">
                 <div className="relative">
                   <select
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value as HttpMethod)}
-                    className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[method] || "text-slate-600"}`}
+                    value={activeTab.method}
+                    onChange={(e) => updateActiveTab({ method: e.target.value as HttpMethod })}
+                    className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[activeTab.method] || "text-slate-600"}`}
                   >
                     <option value="GET">GET</option>
                     <option value="POST">POST</option>
@@ -780,8 +779,8 @@ function CollectionWorkspace() {
 
                 <div className="flex-1 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
                   <VariableInput
-                    value={requestUrl}
-                    onChange={setRequestUrl}
+                    value={activeTab.url}
+                    onChange={(url) => updateActiveTab({ url })}
                     placeholder="Enter request URL (e.g., https://api.example.com/users)"
                     className="px-4 h-full"
                     environments={environments}
@@ -792,10 +791,10 @@ function CollectionWorkspace() {
 
                 <button
                   onClick={handleSendRequest}
-                  disabled={isLoading}
+                  disabled={activeTab.isLoading}
                   className="px-5 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
-                  {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  {activeTab.isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                   Send
                 </button>
 
@@ -828,70 +827,25 @@ function CollectionWorkspace() {
               >
 
                 <div className="flex-1 flex flex-col min-h-0 p-4">
-                  <div className="bg-white border border-slate-200 rounded-lg flex flex-col flex-1 min-h-0 shadow-sm">
-                    <div className="px-4 border-b border-slate-200 shrink-0">
-                      <div className="flex gap-1">
-                        {getTabsForMethod(method).map((tab) => (
-                          <button
-                            key={tab}
-                            onClick={() => setActiveRequestTab(tab)}
-                            className={`px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${activeRequestTab === tab
-                              ? "text-blue-600 border-blue-500"
-                              : "text-slate-500 border-transparent hover:text-slate-700"
-                              }`}
-                          >
-                            {tab}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
-                      {activeRequestTab === "Params" && (
-                        <div className="flex-1 flex flex-col min-h-0 h-full">
-                          <ParamsEditor
-                            params={params}
-                            onChange={setParams}
-                            environments={environments}
-                            selectedEnvId={selectedEnvId}
-                            onUpdateVariable={handleUpdateVariable}
-                          />
-                        </div>
-                      )}
-
-                      {activeRequestTab === "Body" && (
-                        <div className="flex-1 flex flex-col min-h-0 h-full">
-                          <BodyEditor
-                            value={requestBody}
-                            onChange={setRequestBody}
-                            environments={environments}
-                            selectedEnvId={selectedEnvId}
-                          />
-                        </div>
-                      )}
-
-                      {activeRequestTab === "Headers" && (
-                        <HeadersEditor
-                          headers={headers}
-                          onChange={setHeaders}
-                          environments={environments}
-                          selectedEnvId={selectedEnvId}
-                          onUpdateVariable={handleUpdateVariable}
-                        />
-                      )}
-
-                      {activeRequestTab === "Auth" && (
-                        <AuthEditor
-                          authType={authType}
-                          authData={authData}
-                          onChange={(type, data) => {
-                            setAuthType(type);
-                            setAuthData(data);
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
+                  <RequestConfigTabs
+                    body={activeTab.body}
+                    onBodyChange={(body) => updateActiveTab({ body })}
+                    headers={activeTab.headers}
+                    onHeadersChange={(headers) => updateActiveTab({ headers })}
+                    params={activeTab.params}
+                    onParamsChange={(params) => updateActiveTab({ params })}
+                    method={activeTab.method}
+                    environments={environments}
+                    selectedEnvId={selectedEnvId}
+                    onUpdateVariable={handleUpdateVariable}
+                    onBodyTypeChange={(bodyType) => updateActiveTab({ bodyType })}
+                    authType={activeTab.authType}
+                    authData={activeTab.authData}
+                    onAuthChange={(authType, authData) => {
+                      updateActiveTab({ authType, authData });
+                    }}
+                    variant="compact"
+                  />
                 </div>
               </div>
 
@@ -913,8 +867,8 @@ function CollectionWorkspace() {
               <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
                 <div className="flex-1 overflow-hidden p-4 pt-2 h-full">
                   <ResponseViewer
-                    response={response}
-                    error={error}
+                    response={activeTab.response}
+                    error={activeTab.error}
                     isBeautified={isBeautified}
                     onToggleBeautify={() => setIsBeautified(!isBeautified)}
                   />
@@ -943,6 +897,13 @@ function CollectionWorkspace() {
           </div>
         )}
       </main>
+
+      <SaveToCollectionModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSaveToCollection}
+        requestName={activeTab?.name}
+      />
     </div>
   );
 }
