@@ -185,4 +185,41 @@ export const api = {
 
   sendRequest: (request: { method: string; url: string; headers: Record<string, string>; body: string | null }) =>
     invoke<ResponseData>("send_http_request", { request }),
+
+  startLoadTest: (config: LoadTestConfig) =>
+    invoke<void>("start_load_test", { config }),
+
+  stopLoadTest: () =>
+    invoke<void>("stop_load_test"),
 };
+
+export interface LoadTestConfig {
+  collection_id: string;
+  environment_id: string | null;
+  concurrent_users: number;
+  duration_seconds: number | null;
+  loop_count: number | null;
+  delay_ms: number;
+}
+
+export interface RecordedRequest {
+  name: string;
+  method: string;
+  url: string;
+  status: number;
+  latency_ms: number;
+  error: string | null;
+}
+
+export interface LoadTestProgress {
+  elapsed_seconds: number;
+  completed_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  current_rps: number;
+  avg_latency_ms: number;
+  min_latency_ms: number;
+  max_latency_ms: number;
+  is_finished: boolean;
+  recent_results: RecordedRequest[];
+}

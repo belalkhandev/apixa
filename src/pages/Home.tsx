@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Folder, Plus, Terminal, Loader2, Zap, Import } from "lucide-react";
+import { Folder, Plus, Terminal, Loader2, Zap, Import, PlayCircle } from "lucide-react";
 import NewCollectionModal from "../components/NewCollectionModal";
 import ImportCollectionModal from "../components/ImportCollectionModal";
+import SelectCollectionModal from "../components/SelectCollectionModal";
 import { api, Collection } from "../api";
 
 function Home() {
@@ -11,6 +12,7 @@ function Home() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -80,26 +82,38 @@ function Home() {
             <span className="text-sm font-medium text-emerald-600">New Request</span>
           </motion.button>
 
-          {/* Collections */}
+          {/* Load Test Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
+            onClick={() => setIsSelectModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 border-2 border-dashed border-blue-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors"
+          >
+            <PlayCircle size={18} className="text-blue-500" />
+            <span className="text-sm font-medium text-blue-600">Load Test</span>
+          </motion.button>
+
           {collections.map((collection, index) => (
-            <motion.button
-              key={collection.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: (index + 1) * 0.05 }}
-              onClick={() => handleCollectionClick(collection.id)}
-              className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-colors"
-            >
-              <Folder size={18} className="text-amber-500" />
-              <span className="text-sm font-medium text-slate-700">{collection.name}</span>
-            </motion.button>
+            <div key={collection.id} className="group relative">
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: (index + 2) * 0.05 }}
+                onClick={() => handleCollectionClick(collection.id)}
+                className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-colors w-full"
+              >
+                <Folder size={18} className="text-amber-500" />
+                <span className="text-sm font-medium text-slate-700">{collection.name}</span>
+              </motion.button>
+            </div>
           ))}
 
           {/* New Collection Button */}
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: (collections.length + 1) * 0.05 }}
+            transition={{ duration: 0.2, delay: (collections.length + 3) * 0.05 }}
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-5 py-3 border-2 border-dashed border-slate-300 rounded-xl hover:border-slate-400 hover:bg-slate-50 transition-colors"
           >
@@ -110,7 +124,7 @@ function Home() {
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: (collections.length + 2) * 0.05 }}
+            transition={{ duration: 0.2, delay: (collections.length + 4) * 0.05 }}
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-2 px-5 py-3 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors group"
           >
@@ -133,6 +147,13 @@ function Home() {
           setCollections([collection, ...collections]);
           navigate(`/collection/${collection.id}`);
         }}
+      />
+
+      <SelectCollectionModal
+        isOpen={isSelectModalOpen}
+        onClose={() => setIsSelectModalOpen(false)}
+        collections={collections}
+        onSelect={(id) => navigate(`/runner/${id}`)}
       />
     </div >
   );

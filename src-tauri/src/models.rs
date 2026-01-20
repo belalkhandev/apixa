@@ -173,3 +173,37 @@ pub struct ParamInput {
     pub description: Option<String>,
     pub enabled: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadTestConfig {
+    pub collection_id: String,
+    pub environment_id: Option<String>,
+    pub concurrent_users: u32,
+    pub duration_seconds: Option<u32>,
+    pub loop_count: Option<u32>,
+    pub delay_ms: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecordedRequest {
+    pub name: String,
+    pub method: String,
+    pub url: String,
+    pub status: u16,
+    pub latency_ms: u64,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadTestProgress {
+    pub elapsed_seconds: u32,
+    pub completed_requests: u32,
+    pub successful_requests: u32,
+    pub failed_requests: u32,
+    pub current_rps: f64,
+    pub avg_latency_ms: u64,
+    pub min_latency_ms: u64,
+    pub max_latency_ms: u64,
+    pub is_finished: bool,
+    pub recent_results: Vec<RecordedRequest>,
+}

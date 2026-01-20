@@ -2,6 +2,7 @@ use tauri::Manager;
 
 mod commands;
 mod database;
+mod load_tester;
 mod models;
 mod postman_model;
 
@@ -34,6 +35,9 @@ pub fn run() {
                 .expect("Failed to get app data dir");
             let db = Database::new(app_data_dir).expect("Failed to initialize database");
             app.manage(db);
+            app.manage(std::sync::Arc::new(tokio::sync::Mutex::new(
+                load_tester::LoadTester::new(),
+            )));
 
             let handle = app.handle().clone();
             std::thread::spawn(move || {
@@ -68,7 +72,9 @@ pub fn run() {
             move_request,
             move_folder,
             send_http_request,
-            import_postman_collection
+            import_postman_collection,
+            start_load_test,
+            stop_load_test
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

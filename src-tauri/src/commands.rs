@@ -752,7 +752,11 @@ pub fn move_folder(
         }
 
         // Check if target is a descendant of the folder being moved
-        fn is_descendant(conn: &rusqlite::Connection, folder_id: &str, potential_descendant: &str) -> bool {
+        fn is_descendant(
+            conn: &rusqlite::Connection,
+            folder_id: &str,
+            potential_descendant: &str,
+        ) -> bool {
             let mut stmt = conn
                 .prepare("SELECT parent_id FROM folders WHERE id = ?1")
                 .unwrap();
@@ -889,4 +893,156 @@ pub async fn send_http_request(request: HttpRequest) -> Result<HttpResponse, Str
         time,
         size,
     })
+}
+
+fn get_all_requests_in_collection(
+    conn: &rusqlite::Connection,
+    collection_id: &str,
+) -> Result<Vec<Request>, String> {
+    let mut stmt = conn
+        .prepare("SELECT id FROM requests WHERE collection_id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let ids: Vec<String> = stmt
+        .query_map([collection_id], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let mut requests = Vec::new();
+    for id in ids {
+        // Reusing get_request logic but we need it here without State
+        let req = get_request_internal(conn, id)?;
+        requests.push(req);
+    }
+    Ok(requests)
+}
+
+fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Request, String> {
+    let request: Request = conn
+        .query_row(
+            "SELECT id, collection_id, folder_id, name, method, url, body, sort_order, created_at, updated_at FROM requests WHERE id = ?1",
+            [&id],
+            |row| {
+                Ok(Request {
+                    id: row.get(0)?,
+                    collection_id: row.get(1)?,
+                    folder_id: row.get(2)?,
+                    name: row.get(3)?,
+                    method: row.get(4)?,
+                    url: row.get(5)?,
+                    body: row.get(6)?,
+                    headers: Vec::new(),
+                    params: Vec::new(),
+                    sort_order: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut header_stmt = conn
+        .prepare(
+            "SELECT id, request_id, key, value, enabled FROM request_headers WHERE request_id = ?1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let headers: Vec<RequestHeader> = header_stmt
+        .query_map([&id], |row| {
+            Ok(RequestHeader {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                key: row.get(2)?,
+                value: row.get(3)?,
+                enabled: row.get::<_, i32>(4)? == 1,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let mut param_stmt = conn
+        .prepare("SELECT id, request_id, key, value, param_type, description, enabled FROM request_params WHERE request_id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let params: Vec<RequestParam> = param_stmt
+        .query_map([&id], |row| {
+            Ok(RequestParam {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                key: row.get(2)?,
+                value: row.get(3)?,
+                param_type: row.get(4)?,
+                description: row.get(5)?,
+                enabled: row.get::<_, i32>(6)? == 1,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(Request {
+        headers,
+        params,
+        ..request
+    })
+}
+
+#[tauri::command]
+pub async fn start_load_test(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    tester: State<'_, std::sync::Arc<tokio::sync::Mutex<crate::load_tester::LoadTester>>>,
+    config: LoadTestConfig,
+) -> Result<(), String> {
+    let (requests, variables) = {
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        let requests = get_all_requests_in_collection(&conn, &config.collection_id)?;
+
+        let mut variables = std::collections::HashMap::new();
+        if let Some(ref env_id) = config.environment_id {
+            let mut stmt = conn
+                .prepare("SELECT key, value FROM environment_variables WHERE environment_id = ?1 AND enabled = 1")
+                .map_err(|e| e.to_string())?;
+
+            let env_vars = stmt
+                .query_map([env_id], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
+                .map_err(|e| e.to_string())?;
+
+            for var in env_vars {
+                let (k, v) = var.map_err(|e| e.to_string())?;
+                variables.insert(k, v);
+            }
+        }
+
+        (requests, variables)
+    };
+
+    if requests.is_empty() {
+        return Err("No requests found in this collection".to_string());
+    }
+
+    let tester = tester.inner().clone();
+    let app_clone = app.clone();
+
+    // Run in a separate task so it doesn't block the command
+    tokio::spawn(async move {
+        let mut tester = tester.lock().await;
+        let _ = tester.run(app_clone, config, requests, variables).await;
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_load_test(
+    tester: State<'_, std::sync::Arc<tokio::sync::Mutex<crate::load_tester::LoadTester>>>,
+) -> Result<(), String> {
+    let tester = tester.inner();
+    let mut tester = tester.lock().await;
+    tester.stop();
+    Ok(())
 }
