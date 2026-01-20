@@ -660,22 +660,73 @@ pub fn move_request(
     request_id: String,
     target_folder_id: Option<String>,
     target_collection_id: Option<String>,
+    before_id: Option<String>,
+    after_id: Option<String>,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let timestamp = now();
 
-    if let Some(collection_id) = target_collection_id {
-        // Moving to a different collection (and optionally a folder within it)
+    // Calculate new sort_order based on position
+    let new_sort_order: i32 = if let Some(ref before) = before_id {
+        // Get sort_order of the item we want to be before
+        let target_order: i32 = conn
+            .query_row(
+                "SELECT sort_order FROM requests WHERE id = ?1 UNION SELECT sort_order FROM folders WHERE id = ?1",
+                [before],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        target_order
+    } else if let Some(ref after) = after_id {
+        // Get sort_order of the item we want to be after
+        let target_order: i32 = conn
+            .query_row(
+                "SELECT sort_order FROM requests WHERE id = ?1 UNION SELECT sort_order FROM folders WHERE id = ?1",
+                [after],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        target_order + 1
+    } else {
+        // No position specified, add to end
+        let max_order: i32 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(sort_order), 0) FROM (
+                    SELECT sort_order FROM requests WHERE folder_id IS ?1
+                    UNION ALL
+                    SELECT sort_order FROM folders WHERE parent_id IS ?1
+                )",
+                [&target_folder_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        max_order + 1
+    };
+
+    // Shift items at or after the new position
+    if before_id.is_some() || after_id.is_some() {
         conn.execute(
-            "UPDATE requests SET collection_id = ?1, folder_id = ?2, updated_at = ?3 WHERE id = ?4",
-            (&collection_id, &target_folder_id, &timestamp, &request_id),
+            "UPDATE requests SET sort_order = sort_order + 1 WHERE folder_id IS ?1 AND sort_order >= ?2 AND id != ?3",
+            (&target_folder_id, new_sort_order, &request_id),
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE folders SET sort_order = sort_order + 1 WHERE parent_id IS ?1 AND sort_order >= ?2",
+            (&target_folder_id, new_sort_order),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    if let Some(collection_id) = target_collection_id {
+        conn.execute(
+            "UPDATE requests SET collection_id = ?1, folder_id = ?2, sort_order = ?3, updated_at = ?4 WHERE id = ?5",
+            (&collection_id, &target_folder_id, new_sort_order, &timestamp, &request_id),
         )
         .map_err(|e| e.to_string())?;
     } else {
-        // Moving within the same collection to a different folder
         conn.execute(
-            "UPDATE requests SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
-            (&target_folder_id, &timestamp, &request_id),
+            "UPDATE requests SET folder_id = ?1, sort_order = ?2, updated_at = ?3 WHERE id = ?4",
+            (&target_folder_id, new_sort_order, &timestamp, &request_id),
         )
         .map_err(|e| e.to_string())?;
     }
@@ -688,6 +739,8 @@ pub fn move_folder(
     db: State<Database>,
     folder_id: String,
     target_parent_id: Option<String>,
+    before_id: Option<String>,
+    after_id: Option<String>,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let timestamp = now();
@@ -725,9 +778,57 @@ pub fn move_folder(
         }
     }
 
+    // Calculate new sort_order based on position
+    let new_sort_order: i32 = if let Some(ref before) = before_id {
+        let target_order: i32 = conn
+            .query_row(
+                "SELECT sort_order FROM requests WHERE id = ?1 UNION SELECT sort_order FROM folders WHERE id = ?1",
+                [before],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        target_order
+    } else if let Some(ref after) = after_id {
+        let target_order: i32 = conn
+            .query_row(
+                "SELECT sort_order FROM requests WHERE id = ?1 UNION SELECT sort_order FROM folders WHERE id = ?1",
+                [after],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        target_order + 1
+    } else {
+        let max_order: i32 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(sort_order), 0) FROM (
+                    SELECT sort_order FROM requests WHERE folder_id IS ?1
+                    UNION ALL
+                    SELECT sort_order FROM folders WHERE parent_id IS ?1
+                )",
+                [&target_parent_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        max_order + 1
+    };
+
+    // Shift items at or after the new position
+    if before_id.is_some() || after_id.is_some() {
+        conn.execute(
+            "UPDATE requests SET sort_order = sort_order + 1 WHERE folder_id IS ?1 AND sort_order >= ?2",
+            (&target_parent_id, new_sort_order),
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE folders SET sort_order = sort_order + 1 WHERE parent_id IS ?1 AND sort_order >= ?2 AND id != ?3",
+            (&target_parent_id, new_sort_order, &folder_id),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     conn.execute(
-        "UPDATE folders SET parent_id = ?1, updated_at = ?2 WHERE id = ?3",
-        (&target_parent_id, &timestamp, &folder_id),
+        "UPDATE folders SET parent_id = ?1, sort_order = ?2, updated_at = ?3 WHERE id = ?4",
+        (&target_parent_id, new_sort_order, &timestamp, &folder_id),
     )
     .map_err(|e| e.to_string())?;
 

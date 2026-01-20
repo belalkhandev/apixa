@@ -166,17 +166,21 @@ export const api = {
   deleteRequest: (id: string) =>
     invoke<void>("delete_request", { id }),
 
-  moveRequest: (requestId: string, targetFolderId?: string, targetCollectionId?: string) =>
+  moveRequest: (requestId: string, targetFolderId?: string, targetCollectionId?: string, beforeId?: string, afterId?: string) =>
     invoke<void>("move_request", {
       requestId,
       targetFolderId: targetFolderId || null,
       targetCollectionId: targetCollectionId || null,
+      beforeId: beforeId || null,
+      afterId: afterId || null,
     }),
 
-  moveFolder: (folderId: string, targetParentId?: string) =>
+  moveFolder: (folderId: string, targetParentId?: string, beforeId?: string, afterId?: string) =>
     invoke<void>("move_folder", {
       folderId,
       targetParentId: targetParentId || null,
+      beforeId: beforeId || null,
+      afterId: afterId || null,
     }),
 
   sendRequest: (request: { method: string; url: string; headers: Record<string, string>; body: string | null }) =>

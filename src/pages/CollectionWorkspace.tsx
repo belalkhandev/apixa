@@ -120,7 +120,7 @@ function CollectionWorkspace() {
 
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedItemType, setDraggedItemType] = useState<"request" | "folder" | null>(null);
-  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [dragOverState, setDragOverState] = useState<{ targetId: string; position: "before" | "inside" | "after" } | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   // Layout state
@@ -254,40 +254,105 @@ function CollectionWorkspace() {
   const handleDragEnd = () => {
     setDraggedItemId(null);
     setDraggedItemType(null);
-    setDragOverFolderId(null);
+    setDragOverState(null);
   };
 
-  const handleDragOver = (e: React.DragEvent, folderId: string | null) => {
+  const handleDragOver = (e: React.DragEvent, targetId: string, targetType: "request" | "folder") => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOverFolderId(folderId);
+
+    // Don't show indicator for dragging over self
+    if (targetId === draggedItemId) {
+      setDragOverState(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+
+    let position: "before" | "inside" | "after";
+
+    if (targetType === "folder") {
+      // For folders: top 25% = before, middle 50% = inside, bottom 25% = after
+      if (y < height * 0.25) {
+        position = "before";
+      } else if (y > height * 0.75) {
+        position = "after";
+      } else {
+        position = "inside";
+      }
+    } else {
+      // For requests: top 50% = before, bottom 50% = after
+      position = y < height * 0.5 ? "before" : "after";
+    }
+
+    setDragOverState({ targetId, position });
   };
 
   const handleDragLeave = () => {
-    setDragOverFolderId(null);
+    setDragOverState(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetFolderId: string | null) => {
+  const handleDrop = async (e: React.DragEvent, targetId: string, targetType: "request" | "folder") => {
     e.preventDefault();
     const itemId = e.dataTransfer.getData("text/plain");
     const itemType = e.dataTransfer.getData("application/x-item-type") || draggedItemType;
 
-    if (itemId && itemId !== targetFolderId) {
-      try {
+    if (!itemId || itemId === targetId || !dragOverState) {
+      setDraggedItemId(null);
+      setDraggedItemType(null);
+      setDragOverState(null);
+      return;
+    }
+
+    try {
+      const { position } = dragOverState;
+
+      if (position === "inside" && targetType === "folder") {
+        // Move into folder (no position, will be added at end)
         if (itemType === "folder") {
-          await api.moveFolder(itemId, targetFolderId || undefined);
+          await api.moveFolder(itemId, targetId);
         } else {
-          await api.moveRequest(itemId, targetFolderId || undefined);
+          await api.moveRequest(itemId, targetId);
         }
-        await loadCollectionTree();
-      } catch (err) {
-        console.error(`Failed to move ${itemType}:`, err);
+      } else {
+        // Reorder: move to same parent as target, with position
+        const targetItem = findItemInTree(treeItems, targetId);
+        const parentFolderId = targetItem?.parentId || undefined;
+
+        // Determine before/after based on position
+        const beforeId = position === "before" ? targetId : undefined;
+        const afterId = position === "after" ? targetId : undefined;
+
+        if (itemType === "folder") {
+          await api.moveFolder(itemId, parentFolderId, beforeId, afterId);
+        } else {
+          await api.moveRequest(itemId, parentFolderId, undefined, beforeId, afterId);
+        }
       }
+      await loadCollectionTree();
+    } catch (err) {
+      console.error(`Failed to move ${itemType}:`, err);
     }
 
     setDraggedItemId(null);
     setDraggedItemType(null);
-    setDragOverFolderId(null);
+    setDragOverState(null);
+  };
+
+  // Helper to find item and its parent in tree
+  const findItemInTree = (items: TreeItem[], targetId: string, parentId: string | null = null): { item: TreeItem; parentId: string | null } | null => {
+    for (const item of items) {
+      if (item.id === targetId) {
+        return { item, parentId };
+      }
+      if (item.type === "Folder" && item.items) {
+        const found = findItemInTree(item.items, targetId, item.id);
+        if (found) return found;
+      }
+    }
+    return null;
   };
 
   const handleRequestClick = async (requestId: string, requestName: string, requestMethod: string, requestUrl: string) => {
@@ -691,7 +756,7 @@ function CollectionWorkspace() {
           folderOpenState={folderOpenState}
           draggedItemId={draggedItemId}
           draggedItemType={draggedItemType}
-          dragOverFolderId={dragOverFolderId}
+          dragOverState={dragOverState}
           showNewFolderInput={showNewFolderInput}
           newFolderName={newFolderName}
           searchQuery={searchQuery}

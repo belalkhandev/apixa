@@ -15,7 +15,7 @@ import {
     Layers,
 } from "lucide-react";
 import { Collection, TreeItem } from "../../api";
-import TreeItemRenderer from "./TreeItemRenderer";
+import TreeItemRenderer, { DragOverState } from "./TreeItemRenderer";
 import { useState, useRef, useEffect } from "react";
 
 interface CollectionSidebarProps {
@@ -27,7 +27,7 @@ interface CollectionSidebarProps {
     folderOpenState: Record<string, boolean>;
     draggedItemId: string | null;
     draggedItemType: "request" | "folder" | null;
-    dragOverFolderId: string | null;
+    dragOverState: DragOverState | null;
     showNewFolderInput: string | null;
     newFolderName: string;
     searchQuery: string;
@@ -42,9 +42,9 @@ interface CollectionSidebarProps {
     onSetNewFolderName: (name: string) => void;
     onDragStart: (e: React.DragEvent, id: string, type: "request" | "folder") => void;
     onDragEnd: () => void;
-    onDragOver: (e: React.DragEvent, id: string) => void;
+    onDragOver: (e: React.DragEvent, id: string, itemType: "request" | "folder") => void;
     onDragLeave: (e: React.DragEvent) => void;
-    onDrop: (e: React.DragEvent, id: string) => void;
+    onDrop: (e: React.DragEvent, targetId: string, targetType: "request" | "folder") => void;
     onHomeClick: () => void;
     onSwitchCollection: (collectionId: string) => void;
 
@@ -92,7 +92,7 @@ export default function CollectionSidebar({
     folderOpenState,
     draggedItemId,
     draggedItemType,
-    dragOverFolderId,
+    dragOverState,
     showNewFolderInput,
     newFolderName,
     searchQuery,
@@ -143,7 +143,9 @@ export default function CollectionSidebar({
                         className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                         title="Back to Home"
                     >
-                        <HomeIcon size={16} className="text-slate-500" />
+                        <div className="flex items-center gap-2">
+                            <HomeIcon size={16} className="text-slate-500 hover:text-blue-500" />
+                        </div>
                     </button>
 
                     <div className="relative">
@@ -234,14 +236,14 @@ export default function CollectionSidebar({
                 <div className="flex gap-2 mt-3">
                     <button
                         onClick={() => onNewRequest()}
-                        className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
                     >
                         <Plus size={14} />
                         New Request
                     </button>
                     <button
                         onClick={() => onShowNewFolderInput("root")}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors cursor-pointer"
                         title="New Folder"
                     >
                         <FolderPlus size={14} />
@@ -308,7 +310,7 @@ export default function CollectionSidebar({
                                 folderOpenState={folderOpenState}
                                 draggedItemId={draggedItemId}
                                 draggedItemType={draggedItemType}
-                                dragOverFolderId={dragOverFolderId}
+                                dragOverState={dragOverState}
                                 showNewFolderInput={showNewFolderInput}
                                 newFolderName={newFolderName}
                                 onToggleFolder={onToggleFolder}
