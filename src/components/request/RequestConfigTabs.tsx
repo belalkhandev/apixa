@@ -3,9 +3,11 @@ import BodyEditor, { BodyType } from "../shared/BodyEditor";
 import HeadersEditor, { Header } from "../shared/HeadersEditor";
 import ParamsEditor, { Param } from "../shared/ParamsEditor";
 import AuthEditor, { AuthType } from "../shared/AuthEditor";
+import ExtractEditor, { ExtractRule } from "../shared/ExtractEditor";
 import { Environment } from "../../api";
 
 export type { BodyType };
+export type { ExtractRule };
 
 interface RequestConfigTabsProps {
     body: string;
@@ -19,11 +21,11 @@ interface RequestConfigTabsProps {
     selectedEnvId: string | null;
     onUpdateVariable?: (name: string, newValue: string) => void;
     onBodyTypeChange?: (type: BodyType) => void;
-    // Auth props (optional)
     authType?: AuthType;
     authData?: Record<string, string>;
     onAuthChange?: (type: AuthType, data: Record<string, string>) => void;
-    // Style variants
+    extractRules?: ExtractRule[];
+    onExtractRulesChange?: (rules: ExtractRule[]) => void;
     variant?: "default" | "compact";
     className?: string;
 }
@@ -43,22 +45,29 @@ function RequestConfigTabs({
     authType,
     authData,
     onAuthChange,
+    extractRules,
+    onExtractRulesChange,
     variant = "default",
     className = "",
 }: RequestConfigTabsProps) {
     const [activeTab, setActiveTab] = useState("Body");
 
-    // Determine which tabs to show based on method
     const getVisibleTabs = () => {
         const hasAuth = onAuthChange !== undefined;
+        const hasExtract = onExtractRulesChange !== undefined;
 
+        let tabs: string[];
         if (method === "GET") {
-            // GET: Params, Headers, Auth (no Body)
-            return hasAuth ? ["Params", "Headers", "Auth"] : ["Params", "Headers"];
+            tabs = hasAuth ? ["Params", "Headers", "Auth"] : ["Params", "Headers"];
         } else {
-            // POST, PUT, PATCH, DELETE: Body, Headers, Auth (no Params)
-            return hasAuth ? ["Body", "Headers", "Auth"] : ["Body", "Headers"];
+            tabs = hasAuth ? ["Body", "Headers", "Auth"] : ["Body", "Headers"];
         }
+
+        if (hasExtract) {
+            tabs.push("Extract");
+        }
+
+        return tabs;
     };
 
     const visibleTabs = getVisibleTabs();
@@ -137,6 +146,13 @@ function RequestConfigTabs({
                         environments={environments}
                         selectedEnvId={selectedEnvId}
                         onUpdateVariable={onUpdateVariable}
+                    />
+                )}
+
+                {activeTab === "Extract" && onExtractRulesChange && (
+                    <ExtractEditor
+                        rules={extractRules || [{ variable: "", path: "", enabled: true }]}
+                        onChange={onExtractRulesChange}
                     />
                 )}
             </div>

@@ -6,6 +6,8 @@ import {
     Trash2,
     Search,
     Plus,
+    FolderPlus,
+    Folder,
     Loader2,
     Check,
     X,
@@ -14,7 +16,7 @@ import {
 } from "lucide-react";
 import { Collection, TreeItem } from "../../api";
 import TreeItemRenderer from "./TreeItemRenderer";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface CollectionSidebarProps {
     collection: Collection | null;
@@ -24,6 +26,7 @@ interface CollectionSidebarProps {
     activeTabId: string | null;
     folderOpenState: Record<string, boolean>;
     draggedItemId: string | null;
+    draggedItemType: "request" | "folder" | null;
     dragOverFolderId: string | null;
     showNewFolderInput: string | null;
     newFolderName: string;
@@ -37,7 +40,7 @@ interface CollectionSidebarProps {
     onDeleteRequest: (id: string) => void;
     onShowNewFolderInput: (id: string | null) => void;
     onSetNewFolderName: (name: string) => void;
-    onDragStart: (e: React.DragEvent, id: string) => void;
+    onDragStart: (e: React.DragEvent, id: string, type: "request" | "folder") => void;
     onDragEnd: () => void;
     onDragOver: (e: React.DragEvent, id: string) => void;
     onDragLeave: (e: React.DragEvent) => void;
@@ -88,6 +91,7 @@ export default function CollectionSidebar({
     activeTabId,
     folderOpenState,
     draggedItemId,
+    draggedItemType,
     dragOverFolderId,
     showNewFolderInput,
     newFolderName,
@@ -118,8 +122,16 @@ export default function CollectionSidebar({
 }: CollectionSidebarProps) {
     const [showCollectionMenu, setShowCollectionMenu] = useState(false);
     const [showCollectionSwitcher, setShowCollectionSwitcher] = useState(false);
+    const treeContainerRef = useRef<HTMLDivElement>(null);
 
     const otherCollections = collections.filter(c => c.id !== collection?.id);
+
+    // Scroll to top when showing root folder input
+    useEffect(() => {
+        if (showNewFolderInput === "root" && treeContainerRef.current) {
+            treeContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }, [showNewFolderInput]);
 
     return (
         <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col h-full">
@@ -228,17 +240,60 @@ export default function CollectionSidebar({
                         New Request
                     </button>
                     <button
-                        onClick={() => onCreateFolder()}
+                        onClick={() => onShowNewFolderInput("root")}
                         className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
                         title="New Folder"
                     >
-                        <Plus size={14} />
+                        <FolderPlus size={14} />
                     </button>
                 </div>
             </div>
 
             {/* Collection Tree */}
-            <div className="flex-1 overflow-y-auto p-2">
+            <div ref={treeContainerRef} className="flex-1 overflow-y-auto p-2">
+                {/* Root folder input */}
+                {showNewFolderInput === "root" && (
+                    <div className="flex items-center gap-2 p-2 mb-2 bg-slate-50 rounded-lg border border-blue-200">
+                        <Folder size={14} className="text-amber-500 shrink-0" />
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => onSetNewFolderName(e.target.value)}
+                            placeholder="Folder name"
+                            className="flex-1 text-sm bg-transparent focus:outline-none"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && newFolderName.trim()) {
+                                    onCreateFolder();
+                                }
+                                if (e.key === "Escape") {
+                                    onShowNewFolderInput(null);
+                                    onSetNewFolderName("");
+                                }
+                            }}
+                        />
+                        <button
+                            onClick={() => {
+                                if (newFolderName.trim()) {
+                                    onCreateFolder();
+                                }
+                            }}
+                            className="p-1 hover:bg-slate-200 rounded text-blue-600"
+                        >
+                            <Check size={14} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                onShowNewFolderInput(null);
+                                onSetNewFolderName("");
+                            }}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-400"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                )}
+
                 {isLoading ? (
                     <div className="flex justify-center py-8">
                         <Loader2 className="animate-spin text-slate-400" />
@@ -252,6 +307,7 @@ export default function CollectionSidebar({
                                 activeTabId={activeTabId}
                                 folderOpenState={folderOpenState}
                                 draggedItemId={draggedItemId}
+                                draggedItemType={draggedItemType}
                                 dragOverFolderId={dragOverFolderId}
                                 showNewFolderInput={showNewFolderInput}
                                 newFolderName={newFolderName}

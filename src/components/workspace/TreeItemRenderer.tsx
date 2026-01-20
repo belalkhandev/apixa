@@ -17,6 +17,7 @@ interface TreeItemRendererProps {
     activeTabId: string | null;
     folderOpenState: Record<string, boolean>;
     draggedItemId: string | null;
+    draggedItemType: "request" | "folder" | null;
     dragOverFolderId: string | null;
     showNewFolderInput: string | null;
     newFolderName: string;
@@ -28,7 +29,7 @@ interface TreeItemRendererProps {
     onShowNewFolderInput: (id: string | null) => void;
     onSetNewFolderName: (name: string) => void;
     onCreateFolder: (parentId: string) => void;
-    onDragStart: (e: React.DragEvent, id: string) => void;
+    onDragStart: (e: React.DragEvent, id: string, type: "request" | "folder") => void;
     onDragEnd: () => void;
     onDragOver: (e: React.DragEvent, id: string) => void;
     onDragLeave: (e: React.DragEvent) => void;
@@ -53,6 +54,7 @@ export default function TreeItemRenderer({
     activeTabId,
     folderOpenState,
     draggedItemId,
+    draggedItemType,
     dragOverFolderId,
     showNewFolderInput,
     newFolderName,
@@ -71,13 +73,13 @@ export default function TreeItemRenderer({
     onDrop,
 }: TreeItemRendererProps) {
     if (item.type === "Request") {
-        const isDragging = draggedItemId === item.id;
+        const isDragging = draggedItemId === item.id && draggedItemType === "request";
 
         return (
             <div
                 key={item.id}
                 draggable
-                onDragStart={(e) => onDragStart(e, item.id)}
+                onDragStart={(e) => onDragStart(e, item.id, "request")}
                 onDragEnd={onDragEnd}
                 className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab transition-all ${isDragging
                         ? "opacity-50 bg-blue-100"
@@ -112,16 +114,24 @@ export default function TreeItemRenderer({
 
     const isOpen = folderOpenState[item.id] ?? false;
     const isDragOver = dragOverFolderId === item.id;
+    const isFolderDragging = draggedItemId === item.id && draggedItemType === "folder";
+    // Don't allow dropping a folder into itself
+    const canDrop = !(draggedItemType === "folder" && draggedItemId === item.id);
 
     return (
         <div key={item.id}>
             <div
-                onDragOver={(e) => onDragOver(e, item.id)}
+                draggable
+                onDragStart={(e) => onDragStart(e, item.id, "folder")}
+                onDragEnd={onDragEnd}
+                onDragOver={(e) => canDrop && onDragOver(e, item.id)}
                 onDragLeave={onDragLeave}
-                onDrop={(e) => onDrop(e, item.id)}
-                className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors ${isDragOver
-                        ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
-                        : "hover:bg-slate-50"
+                onDrop={(e) => canDrop && onDrop(e, item.id)}
+                className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors cursor-grab ${isFolderDragging
+                        ? "opacity-50 bg-blue-100"
+                        : isDragOver && canDrop
+                            ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
+                            : "hover:bg-slate-50"
                     }`}
                 style={{ marginLeft: `${depth * 12}px` }}
             >
@@ -210,6 +220,7 @@ export default function TreeItemRenderer({
                                 activeTabId={activeTabId}
                                 folderOpenState={folderOpenState}
                                 draggedItemId={draggedItemId}
+                                draggedItemType={draggedItemType}
                                 dragOverFolderId={dragOverFolderId}
                                 showNewFolderInput={showNewFolderInput}
                                 newFolderName={newFolderName}

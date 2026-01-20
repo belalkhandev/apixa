@@ -62,16 +62,15 @@ function ParamsEditor({ params, onChange, environments, selectedEnvId, onUpdateV
                 <h4 className="text-sm font-medium text-slate-700">Query Params</h4>
             </div>
             <div className="border border-slate-200 rounded-lg overflow-hidden shrink-0">
-                <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <div className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
                     <span className="text-xs font-medium text-slate-600">Key</span>
                     <span className="text-xs font-medium text-slate-600">Value</span>
-                    <span className="text-xs font-medium text-slate-600">Description</span>
                     <span></span>
                 </div>
                 {displayParams.map((param, index) => (
                     <div
                         key={index}
-                        className="grid grid-cols-[1fr_1fr_1fr_40px] gap-2 px-3 py-1.5 border-b border-slate-100 last:border-b-0 items-center"
+                        className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-1.5 border-b border-slate-100 last:border-b-0 items-center"
                         style={{ minHeight: "36px" }}
                     >
                         <VariableInput
@@ -91,13 +90,6 @@ function ParamsEditor({ params, onChange, environments, selectedEnvId, onUpdateV
                             environments={environments}
                             selectedEnvId={selectedEnvId}
                             onUpdateVariable={onUpdateVariable}
-                        />
-                        <input
-                            type="text"
-                            value={param.description || ""}
-                            onChange={(e) => updateParam(index, "description", e.target.value)}
-                            placeholder="description"
-                            className="text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none bg-transparent px-2 h-[28px]"
                         />
                         <button
                             onClick={() => removeParam(index)}

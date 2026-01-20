@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import EnvironmentManager from "../components/EnvironmentManager";
 import ResponseViewer from "../components/request/ResponseViewer";
-import RequestConfigTabs, { BodyType } from "../components/request/RequestConfigTabs";
+import RequestConfigTabs, { BodyType, ExtractRule } from "../components/request/RequestConfigTabs";
 import { AuthType } from "../components/shared/AuthEditor";
 import { Param } from "../components/shared/ParamsEditor";
 import { api, Collection, TreeItem, Request as ApiRequest, ResponseData } from "../api";
@@ -34,14 +34,13 @@ interface TabState {
   method: HttpMethod;
   url: string;
   isNew?: boolean;
-  // Request-specific state
   body: string;
   bodyType: BodyType;
   headers: { key: string; value: string; enabled: boolean }[];
   params: Param[];
   authType: AuthType;
   authData: Record<string, string>;
-  // Response state
+  extractRules: ExtractRule[];
   response: ResponseData | null;
   error: string | null;
   isLoading: boolean;
@@ -59,6 +58,7 @@ const createDefaultTabState = (id: string, name: string = "New Request", method:
   params: [{ key: "", value: "", param_type: "query", description: "", enabled: true }],
   authType: "none",
   authData: {},
+  extractRules: [{ variable: "", path: "", enabled: true }],
   response: null,
   error: null,
   isLoading: false,
@@ -119,6 +119,7 @@ function CollectionWorkspace() {
   const [editedCollectionName, setEditedCollectionName] = useState("");
 
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [draggedItemType, setDraggedItemType] = useState<"request" | "folder" | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
@@ -242,14 +243,17 @@ function CollectionWorkspace() {
   };
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, requestId: string) => {
-    setDraggedItemId(requestId);
+  const handleDragStart = (e: React.DragEvent, itemId: string, type: "request" | "folder") => {
+    setDraggedItemId(itemId);
+    setDraggedItemType(type);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", requestId);
+    e.dataTransfer.setData("text/plain", itemId);
+    e.dataTransfer.setData("application/x-item-type", type);
   };
 
   const handleDragEnd = () => {
     setDraggedItemId(null);
+    setDraggedItemType(null);
     setDragOverFolderId(null);
   };
 
@@ -265,18 +269,24 @@ function CollectionWorkspace() {
 
   const handleDrop = async (e: React.DragEvent, targetFolderId: string | null) => {
     e.preventDefault();
-    const requestId = e.dataTransfer.getData("text/plain");
+    const itemId = e.dataTransfer.getData("text/plain");
+    const itemType = e.dataTransfer.getData("application/x-item-type") || draggedItemType;
 
-    if (requestId && requestId !== targetFolderId) {
+    if (itemId && itemId !== targetFolderId) {
       try {
-        await api.moveRequest(requestId, targetFolderId || undefined);
+        if (itemType === "folder") {
+          await api.moveFolder(itemId, targetFolderId || undefined);
+        } else {
+          await api.moveRequest(itemId, targetFolderId || undefined);
+        }
         await loadCollectionTree();
       } catch (err) {
-        console.error("Failed to move request:", err);
+        console.error(`Failed to move ${itemType}:`, err);
       }
     }
 
     setDraggedItemId(null);
+    setDraggedItemType(null);
     setDragOverFolderId(null);
   };
 
@@ -469,6 +479,27 @@ function CollectionWorkspace() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const extractValueFromPath = (obj: unknown, path: string): string | null => {
+    const parts = path.split(".");
+    let current: unknown = obj;
+
+    for (const part of parts) {
+      if (current === null || current === undefined) return null;
+      if (typeof current !== "object") return null;
+
+      const index = parseInt(part, 10);
+      if (!isNaN(index) && Array.isArray(current)) {
+        current = current[index];
+      } else {
+        current = (current as Record<string, unknown>)[part];
+      }
+    }
+
+    if (current === null || current === undefined) return null;
+    if (typeof current === "object") return JSON.stringify(current);
+    return String(current);
+  };
+
   const handleSendRequest = async () => {
     if (!activeTab || !activeTab.url) {
       updateActiveTab({ error: "Please enter a URL" });
@@ -563,17 +594,34 @@ function CollectionWorkspace() {
         body: (activeTab.method !== "GET" && activeTab.method !== "DELETE") ? resolvedBody : null
       });
 
+      const responseData = {
+        status: res.status,
+        statusText: res.statusText,
+        time: res.time,
+        size: formatBytes(typeof res.size === 'number' ? res.size : parseInt(res.size)),
+        headers: res.headers,
+        body: res.body,
+      };
+
       updateActiveTab({
         isLoading: false,
-        response: {
-          status: res.status,
-          statusText: res.statusText,
-          time: res.time,
-          size: formatBytes(typeof res.size === 'number' ? res.size : parseInt(res.size)),
-          headers: res.headers,
-          body: res.body,
-        }
+        response: responseData
       });
+
+      if (activeTab.extractRules && activeTab.extractRules.length > 0 && selectedEnvId) {
+        try {
+          const jsonBody = JSON.parse(res.body);
+          for (const rule of activeTab.extractRules) {
+            if (rule.enabled && rule.variable.trim() && rule.path.trim()) {
+              const extractedValue = extractValueFromPath(jsonBody, rule.path);
+              if (extractedValue !== null) {
+                handleUpdateVariable(rule.variable, extractedValue);
+              }
+            }
+          }
+        } catch {
+        }
+      }
     } catch (err) {
       console.log(err);
       updateActiveTab({
@@ -642,6 +690,7 @@ function CollectionWorkspace() {
           activeTabId={activeTabId}
           folderOpenState={folderOpenState}
           draggedItemId={draggedItemId}
+          draggedItemType={draggedItemType}
           dragOverFolderId={dragOverFolderId}
           showNewFolderInput={showNewFolderInput}
           newFolderName={newFolderName}
@@ -844,6 +893,8 @@ function CollectionWorkspace() {
                     onAuthChange={(authType, authData) => {
                       updateActiveTab({ authType, authData });
                     }}
+                    extractRules={activeTab.extractRules}
+                    onExtractRulesChange={(extractRules) => updateActiveTab({ extractRules })}
                     variant="compact"
                   />
                 </div>

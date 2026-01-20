@@ -41,7 +41,13 @@
   "bundle": {
     "active": true,
     "targets": ["deb"],
-    "icon": ["icons/code.png"],
+    "icon": [
+      "icons/code.png",
+      "icons/code.png",
+      "icons/code.png",
+      "icons/code.png",
+      "icons/code.png"
+    ],
     "resources": []
   }
 }

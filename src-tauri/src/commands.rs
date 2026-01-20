@@ -684,6 +684,57 @@ pub fn move_request(
 }
 
 #[tauri::command]
+pub fn move_folder(
+    db: State<Database>,
+    folder_id: String,
+    target_parent_id: Option<String>,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let timestamp = now();
+
+    // Prevent moving a folder into itself or its descendants
+    if let Some(ref target_id) = target_parent_id {
+        if *target_id == folder_id {
+            return Err("Cannot move a folder into itself".to_string());
+        }
+
+        // Check if target is a descendant of the folder being moved
+        fn is_descendant(conn: &rusqlite::Connection, folder_id: &str, potential_descendant: &str) -> bool {
+            let mut stmt = conn
+                .prepare("SELECT parent_id FROM folders WHERE id = ?1")
+                .unwrap();
+
+            let parent: Option<String> = stmt
+                .query_row([potential_descendant], |row| row.get(0))
+                .ok();
+
+            match parent {
+                Some(parent_id) => {
+                    if parent_id == folder_id {
+                        true
+                    } else {
+                        is_descendant(conn, folder_id, &parent_id)
+                    }
+                }
+                None => false,
+            }
+        }
+
+        if is_descendant(&conn, &folder_id, target_id) {
+            return Err("Cannot move a folder into its own descendant".to_string());
+        }
+    }
+
+    conn.execute(
+        "UPDATE folders SET parent_id = ?1, updated_at = ?2 WHERE id = ?3",
+        (&target_parent_id, &timestamp, &folder_id),
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn send_http_request(request: HttpRequest) -> Result<HttpResponse, String> {
     let client = reqwest::Client::new();
     let method = match request.method.as_str() {

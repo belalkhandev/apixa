@@ -173,6 +173,12 @@ export const api = {
       targetCollectionId: targetCollectionId || null,
     }),
 
+  moveFolder: (folderId: string, targetParentId?: string) =>
+    invoke<void>("move_folder", {
+      folderId,
+      targetParentId: targetParentId || null,
+    }),
+
   sendRequest: (request: { method: string; url: string; headers: Record<string, string>; body: string | null }) =>
     invoke<ResponseData>("send_http_request", { request }),
 };

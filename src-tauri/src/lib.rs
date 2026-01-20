@@ -65,8 +65,8 @@ pub fn run() {
             get_request,
             update_request,
             delete_request,
-            delete_request,
             move_request,
+            move_folder,
             send_http_request,
             import_postman_collection
         ])
