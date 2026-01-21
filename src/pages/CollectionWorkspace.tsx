@@ -652,28 +652,20 @@ function CollectionWorkspace() {
       }
 
       // Handle body and Content-Type based on bodyType
-      if (activeTab.method !== "GET" && activeTab.method !== "DELETE" && resolvedBody) {
-        if (!requestHeaders["Content-Type"]) {
-          if (activeTab.bodyType === "formdata") {
-            try {
-              const parsed = JSON.parse(resolvedBody);
-              if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-                resolvedBody = Object.entries(parsed)
-                  .map(([key, value]) => {
-                    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-                    return `${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`;
-                  })
-                  .join("&");
-              }
-            } catch {
-              // If not valid JSON, send as-is
-            }
-            requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
-          } else if (activeTab.bodyType === "text") {
-            requestHeaders["Content-Type"] = "text/plain";
-          } else {
-            requestHeaders["Content-Type"] = "application/json";
+      let form_data = null;
+      if (activeTab.bodyType === "formdata") {
+        try {
+          const parsed = JSON.parse(activeTab.body);
+          if (Array.isArray(parsed)) {
+            form_data = parsed.map(item => ({
+              key: replaceEnvVariables(item.key),
+              value: item.type === "file" ? item.value : replaceEnvVariables(item.value),
+              type: item.type,
+              enabled: item.enabled
+            }));
           }
+        } catch {
+          // Fallback if not valid JSON
         }
       }
 
@@ -681,7 +673,9 @@ function CollectionWorkspace() {
         method: activeTab.method,
         url: resolvedUrl,
         headers: requestHeaders,
-        body: (activeTab.method !== "GET" && activeTab.method !== "DELETE") ? resolvedBody : null
+        body: (activeTab.method !== "GET" && activeTab.method !== "DELETE" && activeTab.bodyType !== "formdata") ? resolvedBody : null,
+        body_type: activeTab.bodyType,
+        form_data: form_data
       });
 
       const responseData = {

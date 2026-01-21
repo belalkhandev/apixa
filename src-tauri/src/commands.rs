@@ -151,6 +151,17 @@ pub struct HttpRequest {
     url: String,
     headers: HashMap<String, String>,
     body: Option<String>,
+    body_type: Option<String>,
+    form_data: Option<Vec<FormDataPart>>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct FormDataPart {
+    key: String,
+    value: String,
+    #[serde(rename = "type")]
+    part_type: String, // "text" | "file"
+    enabled: bool,
 }
 
 fn generate_id() -> String {
@@ -880,7 +891,36 @@ pub async fn send_http_request(request: HttpRequest) -> Result<HttpResponse, Str
         req_builder = req_builder.header(key, value);
     }
 
-    if let Some(body) = request.body {
+    if let Some(body_type) = request.body_type {
+        if body_type == "formdata" {
+            if let Some(form_parts) = request.form_data {
+                let mut form = reqwest::multipart::Form::new();
+                for p in form_parts {
+                    if p.enabled {
+                        if p.part_type == "file" && !p.value.is_empty() {
+                            let path = std::path::Path::new(&p.value);
+                            if path.exists() {
+                                let file_name = path
+                                    .file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("file")
+                                    .to_string();
+                                let file_bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+                                let part = reqwest::multipart::Part::bytes(file_bytes)
+                                    .file_name(file_name);
+                                form = form.part(p.key, part);
+                            }
+                        } else {
+                            form = form.text(p.key, p.value);
+                        }
+                    }
+                }
+                req_builder = req_builder.multipart(form);
+            }
+        } else if let Some(body) = request.body {
+            req_builder = req_builder.body(body);
+        }
+    } else if let Some(body) = request.body {
         req_builder = req_builder.body(body);
     }
 

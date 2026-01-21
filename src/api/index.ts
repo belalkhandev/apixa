@@ -205,7 +205,14 @@ export const api = {
       afterId: afterId || null,
     }),
 
-  sendRequest: (request: { method: string; url: string; headers: Record<string, string>; body: string | null }) =>
+  sendRequest: (request: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body: string | null;
+    body_type: string | null;
+    form_data: { key: string; value: string; type: "text" | "file"; enabled: boolean }[] | null;
+  }) =>
     invoke<ResponseData>("send_http_request", { request }),
 
   startLoadTest: (config: LoadTestConfig) =>

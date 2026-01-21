@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { X, AlertCircle } from "lucide-react";
+import { X, AlertCircle, FileText, FileUp, Upload } from "lucide-react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { Environment } from "../../api";
 import prettier from "prettier/standalone";
 import parserBabel from "prettier/plugins/babel";
 import parserEstree from "prettier/plugins/estree";
 import VariableInput from "./VariableInput";
+import { open } from "@tauri-apps/plugin-dialog";
 
 export type BodyType = "json" | "text" | "formdata";
 
 interface FormDataItem {
     key: string;
     value: string;
+    type: "text" | "file";
     enabled: boolean;
 }
 
@@ -46,7 +48,7 @@ function BodyEditor({
         }
     }, [initialType]);
     const [formData, setFormData] = useState<FormDataItem[]>([
-        { key: "", value: "", enabled: true },
+        { key: "", value: "", type: "text", enabled: true },
     ]);
     const [isValidJson, setIsValidJson] = useState(true);
 
@@ -73,50 +75,43 @@ function BodyEditor({
             const parsed = JSON.parse(jsonStr);
             const items: FormDataItem[] = [];
 
-            // Helper to flatten object or handle nested
-            const processValue = (val: any) => {
-                if (typeof val === "object" && val !== null) {
-                    return JSON.stringify(val);
-                }
-                return String(val);
-            };
-
-            if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+            if (Array.isArray(parsed)) {
+                // New structured format
+                parsed.forEach((item: any) => {
+                    if (item && typeof item === "object" && item.key) {
+                        items.push({
+                            key: item.key,
+                            value: item.value || "",
+                            type: item.type || "text",
+                            enabled: item.enabled !== undefined ? item.enabled : true
+                        });
+                    }
+                });
+            } else if (typeof parsed === "object" && parsed !== null) {
+                // Old flat format
                 Object.entries(parsed).forEach(([key, val]) => {
-                    items.push({ key, value: processValue(val), enabled: true });
+                    items.push({
+                        key,
+                        value: typeof val === "object" ? JSON.stringify(val) : String(val),
+                        type: "text",
+                        enabled: true
+                    });
                 });
             }
 
             // Add empty row at the end
-            items.push({ key: "", value: "", enabled: true });
-            return items.length > 0 ? items : [{ key: "", value: "", enabled: true }];
+            items.push({ key: "", value: "", type: "text", enabled: true });
+            return items.length > 0 ? items : [{ key: "", value: "", type: "text", enabled: true }];
         } catch {
-            return [{ key: "", value: "", enabled: true }];
+            return [{ key: "", value: "", type: "text", enabled: true }];
         }
     };
 
     // Convert Form Data to JSON
     const formDataToJson = (items: FormDataItem[]): string => {
-        const obj: Record<string, any> = {};
-        items.forEach((item) => {
-            if (item.key.trim() && item.enabled) {
-                // Try to parse number/boolean/json if possible for "smart" feeling
-                let val: any = item.value;
-                if (val === "true") val = true;
-                else if (val === "false") val = false;
-                else if (!isNaN(Number(val)) && val.trim() !== "") val = Number(val);
-
-                try {
-                    // If value looks like JSON object/array, parse it
-                    if ((val.startsWith("{") || val.startsWith("[")) && (val.endsWith("}") || val.endsWith("]"))) {
-                        val = JSON.parse(val);
-                    }
-                } catch { }
-
-                obj[item.key] = val;
-            }
-        });
-        return Object.keys(obj).length > 0 ? JSON.stringify(obj, null, 4) : "";
+        const filtered = items.filter((item) => item.key.trim() && item.enabled);
+        if (filtered.length === 0) return "";
+        return JSON.stringify(filtered, null, 4);
     };
 
     const handleTypeChange = (newType: BodyType) => {
@@ -137,6 +132,20 @@ function BodyEditor({
 
         setBodyType(newType);
         onBodyTypeChange?.(newType);
+    };
+
+    const handleFilePick = async (index: number) => {
+        try {
+            const selected = await open({
+                multiple: false,
+                directory: false,
+            });
+            if (selected && typeof selected === "string") {
+                updateFormDataItem(index, "value", selected);
+            }
+        } catch (err) {
+            console.error("Failed to pick file:", err);
+        }
     };
 
     const updateDecorations = () => {
@@ -217,22 +226,26 @@ function BodyEditor({
 
     const updateFormDataItem = (
         index: number,
-        field: "key" | "value",
-        newValue: string
+        field: keyof FormDataItem,
+        newValue: string | boolean
     ) => {
         const newFormData = [...formData];
-        newFormData[index][field] = newValue;
+        if (field === "type") {
+            newFormData[index][field] = newValue as "text" | "file";
+        } else {
+            (newFormData[index] as any)[field] = newValue;
+        }
 
         // Auto-expand
         const isLastRow = index === formData.length - 1;
         const lastRowHasContent =
-            newFormData[index].key || newFormData[index].value;
+            newFormData[index].key || newFormData[index].value || newFormData[index].type === "file";
 
-        if (isLastRow && newValue.length > 0 && lastRowHasContent) {
-            newFormData.push({ key: "", value: "", enabled: true });
+        if (isLastRow && field === "key" && (newValue as string).length > 0 && lastRowHasContent) {
+            newFormData.push({ key: "", value: "", type: "text" as const, enabled: true });
         }
 
-        setFormData(newFormData);
+        setFormData(newFormData as FormDataItem[]);
 
         // Update parent with JSON representation
         const jsonStr = formDataToJson(newFormData);
@@ -245,7 +258,7 @@ function BodyEditor({
             setFormData(newFormData);
             onChange(formDataToJson(newFormData));
         } else {
-            const cleared = [{ key: "", value: "", enabled: true }];
+            const cleared = [{ key: "", value: "", type: "text", enabled: true }];
             setFormData(cleared);
             onChange("");
         }
@@ -334,36 +347,79 @@ function BodyEditor({
                         {formData.map((item, index) => (
                             <div
                                 key={index}
-                                className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 border-b border-slate-100 last:border-b-0"
+                                className="grid grid-cols-[1fr_1fr_40px] items-center border-b border-slate-100 last:border-b-0 group/row"
                             >
-                                <VariableInput
-                                    value={item.key}
-                                    onChange={(newValue) =>
-                                        updateFormDataItem(index, "key", newValue)
-                                    }
-                                    placeholder="key"
-                                    className="text-sm font-mono"
-                                    environments={environments}
-                                    selectedEnvId={selectedEnvId}
-                                    onUpdateVariable={onUpdateVariable}
-                                />
-                                <VariableInput
-                                    value={item.value}
-                                    onChange={(newValue) =>
-                                        updateFormDataItem(index, "value", newValue)
-                                    }
-                                    placeholder="value"
-                                    className="text-sm font-mono"
-                                    environments={environments}
-                                    selectedEnvId={selectedEnvId}
-                                    onUpdateVariable={onUpdateVariable}
-                                />
-                                <button
-                                    onClick={() => removeFormDataItem(index)}
-                                    className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600"
-                                >
-                                    <X size={14} />
-                                </button>
+                                <div className="px-3 py-2 border-r border-slate-50 relative group/key">
+                                    <VariableInput
+                                        value={item.key}
+                                        onChange={(newValue) =>
+                                            updateFormDataItem(index, "key", newValue)
+                                        }
+                                        placeholder="key"
+                                        className="text-sm font-mono h-8"
+                                        environments={environments}
+                                        selectedEnvId={selectedEnvId}
+                                        onUpdateVariable={onUpdateVariable}
+                                    />
+                                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center bg-white border border-slate-200 rounded-md shadow-sm opacity-0 group-hover/key:opacity-100 transition-opacity z-10 p-0.5">
+                                        <button
+                                            onClick={() => updateFormDataItem(index, "type", "text")}
+                                            className={`p-1 rounded transition-colors ${item.type === "text" ? "text-blue-600 bg-blue-50" : "text-slate-400 hover:text-slate-600"}`}
+                                            title="Text"
+                                        >
+                                            <FileText size={12} />
+                                        </button>
+                                        <button
+                                            onClick={() => updateFormDataItem(index, "type", "file")}
+                                            className={`p-1 rounded transition-colors ${item.type === "file" ? "text-blue-600 bg-blue-50" : "text-slate-400 hover:text-slate-600"}`}
+                                            title="File"
+                                        >
+                                            <FileUp size={12} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="px-3 py-2">
+                                    {item.type === "file" ? (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleFilePick(index)}
+                                                className="flex-1 flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 hover:bg-slate-100 transition-colors truncate"
+                                            >
+                                                <span className="truncate">{item.value ? item.value.split(/[/\\]/).pop() : "Select file..."}</span>
+                                                <Upload size={12} className="shrink-0 ml-2" />
+                                            </button>
+                                            {item.value && (
+                                                <button
+                                                    onClick={() => updateFormDataItem(index, "value", "")}
+                                                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                                    title="Clear file"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <VariableInput
+                                            value={item.value}
+                                            onChange={(newValue) =>
+                                                updateFormDataItem(index, "value", newValue)
+                                            }
+                                            placeholder="value"
+                                            className="text-sm font-mono h-8"
+                                            environments={environments}
+                                            selectedEnvId={selectedEnvId}
+                                            onUpdateVariable={onUpdateVariable}
+                                        />
+                                    )}
+                                </div>
+                                <div className="flex justify-center">
+                                    <button
+                                        onClick={() => removeFormDataItem(index)}
+                                        className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-opacity"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

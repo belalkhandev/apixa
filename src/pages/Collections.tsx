@@ -16,6 +16,7 @@ import {
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import NewCollectionModal from "../components/NewCollectionModal";
+import ConfirmModal from "../components/ConfirmModal";
 import { api, Collection } from "../api";
 
 const containerVariants = {
@@ -48,6 +49,7 @@ function Collections() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
         loadCollections();
@@ -85,13 +87,18 @@ function Collections() {
 
     const handleDeleteCollection = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm("Are you sure you want to delete this collection?")) {
-            try {
-                await api.deleteCollection(id);
-                setCollections(collections.filter(c => c.id !== id));
-            } catch (error) {
-                console.error("Failed to delete collection:", error);
-            }
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.deleteCollection(deleteId);
+            setCollections(collections.filter(c => c.id !== deleteId));
+        } catch (error) {
+            console.error("Failed to delete collection:", error);
+        } finally {
+            setDeleteId(null);
         }
     };
 
@@ -276,6 +283,17 @@ function Collections() {
                 }}
                 onCreate={handleCreateCollection}
                 initialData={editingCollection ? { name: editingCollection.name, description: editingCollection.description || "" } : undefined}
+            />
+
+            <ConfirmModal
+                isOpen={deleteId !== null}
+                onClose={() => setDeleteId(null)}
+                onConfirm={confirmDelete}
+                title="Delete Collection"
+                message="Are you sure you want to delete this collection? This will permanently remove all requests and folders inside it."
+                confirmText="Delete"
+                cancelText="Cancel"
+                type="danger"
             />
         </div >
     );
