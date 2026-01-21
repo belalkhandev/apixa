@@ -12,11 +12,16 @@ import {
     Timer,
     Activity,
     Globe,
-    ListFilter
+    ListFilter,
+    Download,
+    TrendingUp
 } from "lucide-react";
 import { api, LoadTestConfig, LoadTestProgress, Environment, RecordedRequest } from "../api";
 import { listen } from "@tauri-apps/api/event";
 import RunnerStats from "../components/RunnerStats";
+import ResponseTimeDistribution from "../components/ResponseTimeDistribution";
+import ErrorAnalysis from "../components/ErrorAnalysis";
+import { exportToJSON, exportToCSV, downloadFile } from "../utils/exportResults";
 
 export default function Runner() {
     const { collectionId } = useParams<{ collectionId: string }>();
@@ -102,6 +107,27 @@ export default function Runner() {
         }
     };
 
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+    };
+
+    const handleExportJSON = () => {
+        if (!progress) return;
+        const json = exportToJSON(progress, requestLog);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+        downloadFile(json, `load-test-${timestamp}.json`);
+    };
+
+    const handleExportCSV = () => {
+        const csv = exportToCSV(requestLog);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+        downloadFile(csv, `load-test-${timestamp}.csv`);
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             {/* Header */}
@@ -120,10 +146,28 @@ export default function Runner() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {progress && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleExportJSON}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors text-sm"
+                            >
+                                <Download size={16} />
+                                JSON
+                            </button>
+                            <button
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors text-sm"
+                            >
+                                <Download size={16} />
+                                CSV
+                            </button>
+                        </div>
+                    )}
                     {!isRunning ? (
                         <button
                             onClick={handleStart}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
                         >
                             <Play size={18} fill="currentColor" />
                             Start Run
@@ -131,7 +175,7 @@ export default function Runner() {
                     ) : (
                         <button
                             onClick={handleStop}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors"
                         >
                             <Square size={18} fill="currentColor" />
                             Stop Run
@@ -143,7 +187,7 @@ export default function Runner() {
             <main className="flex-1 p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Config Sidebar */}
                 <div className="lg:col-span-1 space-y-6">
-                    <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-6">
                         <h2 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
                             <Activity size={16} className="text-blue-500" />
                             Configuration
@@ -214,7 +258,7 @@ export default function Runner() {
                     </section>
 
                     {/* Request Log */}
-                    <section className="bg-white rounded-2xl border border-slate-200 flex flex-col shadow-sm overflow-hidden h-[400px]">
+                    <section className="bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden h-[400px]">
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                                 <ListFilter size={16} className="text-blue-500" />
@@ -259,27 +303,27 @@ export default function Runner() {
                             color="blue"
                         />
                         <StatCard
-                            label="Avg Latency"
-                            value={`${progress?.avg_latency_ms || 0}ms`}
+                            label="P95 Latency"
+                            value={`${progress?.p95_latency_ms || 0}ms`}
                             icon={<Timer size={18} />}
                             color="emerald"
                         />
                         <StatCard
-                            label="Min / Max"
-                            value={`${progress?.min_latency_ms || 0} / ${progress?.max_latency_ms || 0}ms`}
+                            label="P99 Latency"
+                            value={`${progress?.p99_latency_ms || 0}ms`}
                             icon={<Zap size={18} />}
-                            color="indigo"
+                            color="orange"
                         />
                         <StatCard
-                            label="Errors"
-                            value={progress?.failed_requests.toString() || "0"}
-                            icon={<AlertCircle size={18} />}
-                            color="red"
+                            label="Throughput"
+                            value={formatBytes((progress?.bytes_sent || 0) + (progress?.bytes_received || 0))}
+                            icon={<TrendingUp size={18} />}
+                            color="indigo"
                         />
                     </div>
 
                     {/* Charts Section */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm overflow-hidden min-h-[450px] flex flex-col">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 overflow-hidden min-h-[450px] flex flex-col">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                                 <BarChart3 size={16} className="text-blue-500" />
@@ -297,22 +341,36 @@ export default function Runner() {
                             <RunnerStats history={history} />
                         </div>
                     </div>
+
+                    {/* Histogram and Error Analysis */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                            <ResponseTimeDistribution histogram={progress?.latency_histogram || []} />
+                        </div>
+                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                            <ErrorAnalysis
+                                errorCategories={progress?.error_categories || {}}
+                                totalErrors={progress?.failed_requests || 0}
+                            />
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
     );
 }
 
-function StatCard({ label, value, icon, color }: { label: string, value: string, icon: React.ReactNode, color: 'blue' | 'emerald' | 'red' | 'indigo' }) {
+function StatCard({ label, value, icon, color }: { label: string, value: string, icon: React.ReactNode, color: 'blue' | 'emerald' | 'red' | 'indigo' | 'orange' }) {
     const colors = {
         blue: "bg-blue-50 text-blue-600 border-blue-100",
         emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
         red: "bg-red-50 text-red-600 border-red-100",
         indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+        orange: "bg-orange-50 text-orange-600 border-orange-100",
     };
 
     return (
-        <div className={`p-4 rounded-2xl border ${colors[color]} flex flex-col gap-2 shadow-sm`}>
+        <div className={`p-4 rounded-2xl border ${colors[color]} flex flex-col gap-2`}>
             <div className="flex items-center justify-between opacity-70">
                 <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
                 {icon}

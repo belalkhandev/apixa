@@ -13,8 +13,11 @@ import {
     X,
     ChevronUp,
     Layers,
+    Download,
 } from "lucide-react";
-import { Collection, TreeItem } from "../../api";
+import { Collection, TreeItem, api } from "../../api";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import TreeItemRenderer, { DragOverState } from "./TreeItemRenderer";
 import { useState, useRef, useEffect } from "react";
 
@@ -126,6 +129,24 @@ export default function CollectionSidebar({
 
     const otherCollections = collections.filter(c => c.id !== collection?.id);
 
+    const handleExport = async () => {
+        if (!collection) return;
+        try {
+            const json = await api.exportCollection(collection.id);
+            const filePath = await save({
+                defaultPath: `${collection.name}.postman_collection.json`,
+                filters: [{ name: "Postman Collection", extensions: ["json"] }]
+            });
+
+            if (filePath) {
+                await writeTextFile(filePath, json);
+                setShowCollectionMenu(false);
+            }
+        } catch (error) {
+            console.error("Failed to export collection:", error);
+        }
+    };
+
     // Scroll to top when showing root folder input
     useEffect(() => {
         if (showNewFolderInput === "root" && treeContainerRef.current) {
@@ -137,18 +158,47 @@ export default function CollectionSidebar({
         <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col h-full">
             {/* Collection Header */}
             <div className="p-4 border-b border-slate-100 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 mb-3">
                     <button
                         onClick={onHomeClick}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
                         title="Back to Home"
                     >
-                        <div className="flex items-center gap-2 cursor-pointer">
-                            <HomeIcon size={16} className="text-slate-500 hover:text-blue-500" />
-                        </div>
+                        <HomeIcon size={16} className="text-slate-500 hover:text-blue-500" />
                     </button>
 
-                    <div className="relative">
+                    <div className="flex-1 min-w-0">
+                        {isEditingCollectionName ? (
+                            <div className="flex items-center gap-1.5">
+                                <input
+                                    type="text"
+                                    value={editedCollectionName}
+                                    onChange={(e) => onSetEditedCollectionName(e.target.value)}
+                                    className="w-full px-2 py-0.5 text-sm border border-blue-400 rounded focus:outline-none"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") onSaveCollectionName();
+                                        if (e.key === "Escape") onCancelEditCollectionName();
+                                    }}
+                                />
+                                <button onClick={onSaveCollectionName} className="text-blue-600 hover:text-blue-700 cursor-pointer shrink-0">
+                                    <Check size={14} />
+                                </button>
+                                <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600 cursor-pointer shrink-0">
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ) : (
+                            <h2
+                                className="text-sm font-bold text-slate-800 truncate"
+                                title={collection?.name}
+                            >
+                                {collection?.name || "Loading..."}
+                            </h2>
+                        )}
+                    </div>
+
+                    <div className="relative shrink-0 flex items-center">
                         <button
                             onClick={() => setShowCollectionMenu(!showCollectionMenu)}
                             className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -162,7 +212,7 @@ export default function CollectionSidebar({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -5, scale: 0.95 }}
                                     transition={{ duration: 0.1 }}
-                                    className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg overflow-hidden z-30"
+                                    className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg overflow-hidden z-30"
                                 >
                                     <button
                                         onClick={() => {
@@ -174,6 +224,14 @@ export default function CollectionSidebar({
                                         <Edit3 size={14} />
                                         Rename
                                     </button>
+                                    <button
+                                        onClick={handleExport}
+                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <Download size={14} />
+                                        Export Collection
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1"></div>
                                     <button
                                         onClick={() => {
                                             setShowCollectionMenu(false);
@@ -190,35 +248,7 @@ export default function CollectionSidebar({
                     </div>
                 </div>
 
-                {isEditingCollectionName ? (
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={editedCollectionName}
-                            onChange={(e) => onSetEditedCollectionName(e.target.value)}
-                            className="flex-1 px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none"
-                            autoFocus
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") onSaveCollectionName();
-                                if (e.key === "Escape") onCancelEditCollectionName();
-                            }}
-                        />
-                        <button onClick={onSaveCollectionName} className="text-blue-600 hover:text-blue-700 cursor-pointer">
-                            <Check size={16} />
-                        </button>
-                        <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                            <X size={16} />
-                        </button>
-                    </div>
-                ) : (
-                    <h2
-                        className="text-lg font-bold text-slate-800 truncate"
-                        title={collection?.name}
-                    >
-                        {collection?.name || "Loading..."}
-                    </h2>
-                )}
-                <p className="text-xs text-slate-500 mt-1 truncate">
+                <p className="text-[10px] text-slate-400 truncate leading-tight -mt-2 mb-2">
                     {collection?.description || "No description"}
                 </p>
 

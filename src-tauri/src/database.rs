@@ -106,6 +106,23 @@ impl Database {
             "
         )?;
 
+        // Add new columns for request persistence and features
+        let _ = conn.execute("ALTER TABLE requests ADD COLUMN auth_type TEXT", []);
+        let _ = conn.execute("ALTER TABLE requests ADD COLUMN auth_data TEXT", []);
+        let _ = conn.execute("ALTER TABLE requests ADD COLUMN extract_rules TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN body_type TEXT DEFAULT 'none'",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE request_headers ADD COLUMN carry_forward INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE request_params ADD COLUMN carry_forward INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+
         Ok(())
     }
 }

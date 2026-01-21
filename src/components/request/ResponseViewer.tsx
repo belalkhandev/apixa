@@ -133,11 +133,10 @@ function ResponseViewer({ response, error, isBeautified, onToggleBeautify }: Res
                             <button
                                 key={format}
                                 onClick={() => setViewFormat(format)}
-                                className={`px-2 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                                    viewFormat === format
-                                        ? "bg-white text-blue-600 shadow-sm"
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${viewFormat === format
+                                        ? "bg-white text-blue-600"
                                         : "text-slate-500 hover:text-slate-700"
-                                }`}
+                                    }`}
                                 title={label}
                             >
                                 <Icon size={12} />

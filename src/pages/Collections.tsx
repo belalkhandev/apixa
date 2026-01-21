@@ -10,8 +10,11 @@ import {
     Clock,
     Edit2,
     Trash2,
-    ChevronLeft
+    ChevronLeft,
+    Download
 } from "lucide-react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import NewCollectionModal from "../components/NewCollectionModal";
 import { api, Collection } from "../api";
 
@@ -98,6 +101,22 @@ function Collections() {
         setIsModalOpen(true);
     };
 
+    const handleExportAll = async () => {
+        try {
+            const json = await api.exportAllCollections();
+            const filePath = await save({
+                defaultPath: `apixa_backup_${new Date().toISOString().split('T')[0]}.postman_collection.json`,
+                filters: [{ name: "Postman Collection", extensions: ["json"] }]
+            });
+
+            if (filePath) {
+                await writeTextFile(filePath, json);
+            }
+        } catch (error) {
+            console.error("Failed to export all collections:", error);
+        }
+    };
+
     const filteredCollections = collections.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.description && c.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -130,7 +149,8 @@ function Collections() {
                                 <div className="flex items-center gap-4">
                                     <button
                                         onClick={() => navigate("/")}
-                                        className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all cursor-pointer shadow-sm active:scale-95"
+                                        className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
+                                        title="Back to Home"
                                     >
                                         <ChevronLeft size={20} />
                                     </button>
@@ -140,16 +160,25 @@ function Collections() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => {
-                                        setEditingCollection(null);
-                                        setIsModalOpen(true);
-                                    }}
-                                    className="flex items-center gap-2 px-6 h-12 bg-blue-600 text-xs font-bold text-white rounded-xl hover:bg-blue-700 transition-all active:scale-95 cursor-pointer shadow-sm"
-                                >
-                                    <Plus size={16} />
-                                    NEW COLLECTION
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={handleExportAll}
+                                        className="flex items-center gap-2 px-6 h-12 bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded-xl hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
+                                    >
+                                        <Download size={16} />
+                                        EXPORT ALL
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditingCollection(null);
+                                            setIsModalOpen(true);
+                                        }}
+                                        className="flex items-center gap-2 px-6 h-12 bg-blue-600 text-xs font-bold text-white rounded-xl hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
+                                    >
+                                        <Plus size={16} />
+                                        NEW COLLECTION
+                                    </button>
+                                </div>
                             </motion.div>
 
                             {/* Search */}
@@ -160,7 +189,7 @@ function Collections() {
                                     placeholder="Search collections..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium shadow-sm"
+                                    className="pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium"
                                 />
                             </motion.div>
                         </div>
@@ -234,9 +263,10 @@ function Collections() {
                                 </div>
                             )}
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    </motion.div >
+                )
+                }
+            </AnimatePresence >
 
             <NewCollectionModal
                 isOpen={isModalOpen}
@@ -247,7 +277,7 @@ function Collections() {
                 onCreate={handleCreateCollection}
                 initialData={editingCollection ? { name: editingCollection.name, description: editingCollection.description || "" } : undefined}
             />
-        </div>
+        </div >
     );
 }
 

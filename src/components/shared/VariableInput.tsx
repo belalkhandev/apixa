@@ -281,7 +281,7 @@ const VariableInput: React.FC<VariableInputProps> = ({
             {hoveredVariable && tooltipPosition && (
                 <div
                     ref={tooltipRef}
-                    className="fixed z-[9999] bg-white text-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] border border-slate-200 overflow-hidden"
+                    className="fixed z-[9999] bg-white text-slate-800 rounded-lg border border-slate-200 overflow-hidden"
                     style={{
                         top: tooltipPosition.y,
                         left: tooltipPosition.x,
@@ -294,9 +294,8 @@ const VariableInput: React.FC<VariableInputProps> = ({
                     <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span
-                                className={`w-2 h-2 rounded-full ${
-                                    hoveredVariable.isValid ? "bg-emerald-500" : "bg-red-500"
-                                }`}
+                                className={`w-2 h-2 rounded-full ${hoveredVariable.isValid ? "bg-emerald-500" : "bg-red-500"
+                                    }`}
                             />
                             <span className="font-mono text-xs font-semibold text-slate-700">
                                 {hoveredVariable.variableName}
@@ -378,11 +377,10 @@ const VariableInput: React.FC<VariableInputProps> = ({
 
                     {/* Arrow indicator */}
                     <div
-                        className={`absolute w-2 h-2 bg-white border-slate-200 transform rotate-45 ${
-                            tooltipPosition.placement === "bottom"
+                        className={`absolute w-2 h-2 bg-white border-slate-200 transform rotate-45 ${tooltipPosition.placement === "bottom"
                                 ? "-top-1 border-l border-t"
                                 : "-bottom-1 border-r border-b"
-                        }`}
+                            }`}
                         style={{
                             left: tooltipPosition.align === "left" ? 16 : tooltipPosition.align === "right" ? TOOLTIP_WIDTH - 24 : TOOLTIP_WIDTH / 2 - 4,
                         }}

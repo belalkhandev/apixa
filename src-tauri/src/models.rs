@@ -47,6 +47,10 @@ pub struct Request {
     pub method: String,
     pub url: String,
     pub body: Option<String>,
+    pub body_type: Option<String>,
+    pub auth_type: Option<String>,
+    pub auth_data: Option<String>,
+    pub extract_rules: Option<String>,
     pub headers: Vec<RequestHeader>,
     pub params: Vec<RequestParam>,
     pub sort_order: i32,
@@ -61,6 +65,7 @@ pub struct RequestHeader {
     pub key: String,
     pub value: String,
     pub enabled: bool,
+    pub carry_forward: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +77,7 @@ pub struct RequestParam {
     pub param_type: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub carry_forward: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,6 +160,10 @@ pub struct UpdateRequestInput {
     pub method: String,
     pub url: String,
     pub body: Option<String>,
+    pub body_type: Option<String>,
+    pub auth_type: Option<String>,
+    pub auth_data: Option<String>,
+    pub extract_rules: Option<String>,
     pub headers: Vec<HeaderInput>,
     pub params: Vec<ParamInput>,
 }
@@ -163,6 +173,7 @@ pub struct HeaderInput {
     pub key: String,
     pub value: String,
     pub enabled: bool,
+    pub carry_forward: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,6 +183,14 @@ pub struct ParamInput {
     pub param_type: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub carry_forward: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistogramBucket {
+    pub range_start: u64,
+    pub range_end: u64,
+    pub count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,6 +211,9 @@ pub struct RecordedRequest {
     pub status: u16,
     pub latency_ms: u64,
     pub error: Option<String>,
+    pub error_category: Option<String>,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,6 +226,14 @@ pub struct LoadTestProgress {
     pub avg_latency_ms: u64,
     pub min_latency_ms: u64,
     pub max_latency_ms: u64,
+    pub p50_latency_ms: u64,
+    pub p90_latency_ms: u64,
+    pub p95_latency_ms: u64,
+    pub p99_latency_ms: u64,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    pub error_categories: std::collections::HashMap<String, u32>,
+    pub latency_histogram: Vec<HistogramBucket>,
     pub is_finished: bool,
     pub recent_results: Vec<RecordedRequest>,
 }

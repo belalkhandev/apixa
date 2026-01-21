@@ -184,7 +184,11 @@ function QuickRequestModal({
           method,
           url,
           requestBody || null,
-          filteredHeaders.map((h) => ({ key: h.key, value: h.value, enabled: true })),
+          null, // body_type
+          null, // auth_type
+          null, // auth_data
+          null, // extract_rules
+          filteredHeaders.map((h) => ({ key: h.key, value: h.value, enabled: true, carry_forward: false })),
           []
         );
       }
@@ -238,7 +242,7 @@ function QuickRequestModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+            className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -268,7 +272,7 @@ function QuickRequestModal({
                         initial={{ opacity: 0, y: -5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
-                        className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-10"
+                        className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-xl overflow-hidden z-10"
                       >
                         {!isCreatingCollection ? (
                           <>
@@ -393,8 +397,8 @@ function QuickRequestModal({
                     <button
                       onClick={() => setActiveTab("body")}
                       className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "body"
-                          ? "text-blue-600 border-blue-500"
-                          : "text-slate-500 border-transparent hover:text-slate-700"
+                        ? "text-blue-600 border-blue-500"
+                        : "text-slate-500 border-transparent hover:text-slate-700"
                         }`}
                     >
                       Body
@@ -402,8 +406,8 @@ function QuickRequestModal({
                     <button
                       onClick={() => setActiveTab("headers")}
                       className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "headers"
-                          ? "text-blue-600 border-blue-500"
-                          : "text-slate-500 border-transparent hover:text-slate-700"
+                        ? "text-blue-600 border-blue-500"
+                        : "text-slate-500 border-transparent hover:text-slate-700"
                         }`}
                     >
                       Headers
@@ -499,8 +503,8 @@ function QuickRequestModal({
                       <button
                         onClick={() => setIsBeautified(!isBeautified)}
                         className={`p-1.5 rounded transition-colors ${isBeautified
-                            ? "bg-blue-100 text-blue-600"
-                            : "text-slate-400 hover:bg-slate-100"
+                          ? "bg-blue-100 text-blue-600"
+                          : "text-slate-400 hover:bg-slate-100"
                           }`}
                       >
                         <WrapText size={14} />

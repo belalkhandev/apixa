@@ -107,7 +107,7 @@ export default function ImportCollectionModal({
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden"
+                    className="relative w-full max-w-md bg-white rounded-2xl overflow-hidden"
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">

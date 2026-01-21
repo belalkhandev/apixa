@@ -1,3 +1,6 @@
+use crate::histogram::{
+    calculate_percentiles, categorize_error, categorize_status, generate_histogram,
+};
 use crate::models::{LoadTestConfig, LoadTestProgress, RecordedRequest, Request};
 use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
@@ -36,6 +39,10 @@ impl LoadTester {
         let min_latency = Arc::new(Mutex::new(u64::MAX));
         let max_latency = Arc::new(Mutex::new(0u64));
         let recent_results = Arc::new(Mutex::new(Vec::<RecordedRequest>::with_capacity(20)));
+        let latencies = Arc::new(Mutex::new(Vec::<u64>::with_capacity(10000)));
+        let bytes_sent = Arc::new(Mutex::new(0u64));
+        let bytes_received = Arc::new(Mutex::new(0u64));
+        let error_categories = Arc::new(Mutex::new(HashMap::<String, u32>::new()));
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
@@ -54,6 +61,10 @@ impl LoadTester {
         let min_latency_clone = min_latency.clone();
         let max_latency_clone = max_latency.clone();
         let recent_results_clone = recent_results.clone();
+        let latencies_clone = latencies.clone();
+        let bytes_sent_clone = bytes_sent.clone();
+        let bytes_received_clone = bytes_received.clone();
+        let error_categories_clone = error_categories.clone();
         let collection_id = config.collection_id.clone();
 
         // Progress reporting task
@@ -85,6 +96,15 @@ impl LoadTester {
                     0.0
                 };
 
+                // Calculate percentiles and histogram
+                let latencies_snapshot = latencies_clone.lock().unwrap().clone();
+                let (p50, p90, p95, p99) = calculate_percentiles(&latencies_snapshot);
+                let histogram = generate_histogram(&latencies_snapshot);
+
+                let bytes_sent_total = *bytes_sent_clone.lock().unwrap();
+                let bytes_received_total = *bytes_received_clone.lock().unwrap();
+                let error_cats = error_categories_clone.lock().unwrap().clone();
+
                 let progress = LoadTestProgress {
                     elapsed_seconds: elapsed,
                     completed_requests: completed,
@@ -94,6 +114,14 @@ impl LoadTester {
                     avg_latency_ms: avg_lat,
                     min_latency_ms: if min_lat == u64::MAX { 0 } else { min_lat },
                     max_latency_ms: max_lat,
+                    p50_latency_ms: p50,
+                    p90_latency_ms: p90,
+                    p95_latency_ms: p95,
+                    p99_latency_ms: p99,
+                    bytes_sent: bytes_sent_total,
+                    bytes_received: bytes_received_total,
+                    error_categories: error_cats,
+                    latency_histogram: histogram,
                     is_finished: false,
                     recent_results: results_to_send,
                 };
@@ -122,6 +150,10 @@ impl LoadTester {
                 let min_latency = min_latency.clone();
                 let max_latency = max_latency.clone();
                 let recent_results = recent_results.clone();
+                let latencies = latencies.clone();
+                let bytes_sent = bytes_sent.clone();
+                let bytes_received = bytes_received.clone();
+                let error_categories = error_categories.clone();
                 let mut stop_rx = stop_tx.subscribe();
                 let loop_count = config.loop_count;
                 let duration = config.duration_seconds;
@@ -156,6 +188,17 @@ impl LoadTester {
                             *completed.lock().unwrap() += 1;
                             *total_latency.lock().unwrap() += latency as u128;
 
+                            // Track latency (bounded to 10000 samples)
+                            {
+                                let mut lats = latencies.lock().unwrap();
+                                if lats.len() < 10000 {
+                                    lats.push(latency);
+                                } else {
+                                    // Replace oldest sample (simple circular buffer)
+                                    lats[*completed.lock().unwrap() as usize % 10000] = latency;
+                                }
+                            }
+
                             {
                                 let mut min = min_latency.lock().unwrap();
                                 if latency < *min {
@@ -167,18 +210,31 @@ impl LoadTester {
                                 }
                             }
 
-                            let status = match res {
-                                Ok(status) => {
+                            let (status, error_msg, req_bytes_sent, req_bytes_received) = match res
+                            {
+                                Ok((status, sent, received)) => {
+                                    *bytes_sent.lock().unwrap() += sent;
+                                    *bytes_received.lock().unwrap() += received;
+
                                     if status >= 200 && status < 300 {
                                         *successful.lock().unwrap() += 1;
                                     } else {
                                         *failed.lock().unwrap() += 1;
+                                        // Categorize HTTP error
+                                        if let Some(category) = categorize_status(status) {
+                                            let mut cats = error_categories.lock().unwrap();
+                                            *cats.entry(category).or_insert(0) += 1;
+                                        }
                                     }
-                                    status
+                                    (status, None, sent, received)
                                 }
-                                Err(_) => {
+                                Err(err_msg) => {
                                     *failed.lock().unwrap() += 1;
-                                    0
+                                    // Categorize error
+                                    let category = categorize_error(&err_msg);
+                                    let mut cats = error_categories.lock().unwrap();
+                                    *cats.entry(category).or_insert(0) += 1;
+                                    (0, Some(err_msg), 0, 0)
                                 }
                             };
 
@@ -188,10 +244,15 @@ impl LoadTester {
                                     recent.push(RecordedRequest {
                                         name: req.name.clone(),
                                         method: req.method.clone(),
-                                        url: req.url.clone(), // This is the raw URL, we could send expanded if needed
+                                        url: req.url.clone(),
                                         status,
                                         latency_ms: latency,
-                                        error: res.as_ref().err().cloned(),
+                                        error: error_msg.clone(),
+                                        error_category: error_msg
+                                            .as_ref()
+                                            .map(|e| categorize_error(e)),
+                                        bytes_sent: req_bytes_sent,
+                                        bytes_received: req_bytes_received,
                                     });
                                 }
                             }
@@ -223,6 +284,13 @@ impl LoadTester {
         let min_lat = *min_latency.lock().unwrap();
         let max_lat = *max_latency.lock().unwrap();
 
+        let latencies_final = latencies.lock().unwrap().clone();
+        let (p50, p90, p95, p99) = calculate_percentiles(&latencies_final);
+        let histogram = generate_histogram(&latencies_final);
+        let bytes_sent_final = *bytes_sent.lock().unwrap();
+        let bytes_received_final = *bytes_received.lock().unwrap();
+        let error_cats_final = error_categories.lock().unwrap().clone();
+
         let avg_lat = if completed > 0 {
             (lat / completed as u128) as u64
         } else {
@@ -243,6 +311,14 @@ impl LoadTester {
             avg_latency_ms: avg_lat,
             min_latency_ms: if min_lat == u64::MAX { 0 } else { min_lat },
             max_latency_ms: max_lat,
+            p50_latency_ms: p50,
+            p90_latency_ms: p90,
+            p95_latency_ms: p95,
+            p99_latency_ms: p99,
+            bytes_sent: bytes_sent_final,
+            bytes_received: bytes_received_final,
+            error_categories: error_cats_final,
+            latency_histogram: histogram,
             is_finished: true,
             recent_results: Vec::new(),
         };
@@ -272,7 +348,7 @@ async fn execute_request(
     client: &reqwest::Client,
     req: &Request,
     variables: &HashMap<String, String>,
-) -> Result<u16, String> {
+) -> Result<(u16, u64, u64), String> {
     let method = match req.method.as_str() {
         "GET" => reqwest::Method::GET,
         "POST" => reqwest::Method::POST,
@@ -295,11 +371,19 @@ async fn execute_request(
         }
     }
 
+    let mut bytes_sent = 0u64;
     if let Some(ref body) = req.body {
         let expanded_body = resolve_variables(body, variables);
+        bytes_sent = expanded_body.len() as u64;
         req_builder = req_builder.body(expanded_body);
     }
 
     let response = req_builder.send().await.map_err(|e| e.to_string())?;
-    Ok(response.status().as_u16())
+    let status = response.status().as_u16();
+
+    // Get response body to calculate bytes received
+    let body_bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    let bytes_received = body_bytes.len() as u64;
+
+    Ok((status, bytes_sent, bytes_received))
 }

@@ -92,7 +92,7 @@ function SaveToCollectionModal({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.15 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-xl"
+            className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div className="flex items-center gap-3">

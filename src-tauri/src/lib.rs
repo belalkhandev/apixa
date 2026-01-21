@@ -2,6 +2,7 @@ use tauri::Manager;
 
 mod commands;
 mod database;
+mod histogram;
 mod load_tester;
 mod models;
 mod postman_model;
@@ -28,6 +29,8 @@ async fn close_splash(window: tauri::Window) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -74,7 +77,9 @@ pub fn run() {
             send_http_request,
             import_postman_collection,
             start_load_test,
-            stop_load_test
+            stop_load_test,
+            export_collection,
+            export_all_collections
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

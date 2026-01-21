@@ -38,6 +38,13 @@ function BodyEditor({
     const monacoRef = useRef<any>(null);
     const decorationIdsRef = useRef<string[]>([]);
     const [bodyType, setBodyType] = useState<BodyType>(initialType);
+
+    // Sync bodyType with initialType prop
+    useEffect(() => {
+        if (initialType) {
+            setBodyType(initialType);
+        }
+    }, [initialType]);
     const [formData, setFormData] = useState<FormDataItem[]>([
         { key: "", value: "", enabled: true },
     ]);
@@ -284,15 +291,35 @@ function BodyEditor({
                             Prettify
                         </button>
                     )}
-                    <select
-                        value={bodyType}
-                        onChange={(e) => handleTypeChange(e.target.value as BodyType)}
-                        className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none focus:border-blue-400"
-                    >
-                        <option value="json">JSON</option>
-                        <option value="formdata">Form Data</option>
-                        <option value="text">Text</option>
-                    </select>
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button
+                            onClick={() => handleTypeChange("json")}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "json"
+                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                }`}
+                        >
+                            JSON
+                        </button>
+                        <button
+                            onClick={() => handleTypeChange("formdata")}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "formdata"
+                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                }`}
+                        >
+                            Form Data
+                        </button>
+                        <button
+                            onClick={() => handleTypeChange("text")}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "text"
+                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                }`}
+                        >
+                            Text
+                        </button>
+                    </div>
                 </div>
             </div>
 

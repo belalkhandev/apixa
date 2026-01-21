@@ -516,6 +516,10 @@ pub fn create_request(db: State<Database>, input: CreateRequestInput) -> Result<
         method: input.method,
         url: input.url,
         body: None,
+        body_type: Some("none".to_string()),
+        auth_type: Some("none".to_string()),
+        auth_data: None,
+        extract_rules: None,
         headers: Vec::new(),
         params: Vec::new(),
         sort_order: 0,
@@ -530,7 +534,7 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
 
     let request: Request = conn
         .query_row(
-            "SELECT id, collection_id, folder_id, name, method, url, body, sort_order, created_at, updated_at FROM requests WHERE id = ?1",
+            "SELECT id, collection_id, folder_id, name, method, url, body, body_type, auth_type, auth_data, extract_rules, sort_order, created_at, updated_at FROM requests WHERE id = ?1",
             [&id],
             |row| {
                 Ok(Request {
@@ -541,11 +545,15 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
                     method: row.get(4)?,
                     url: row.get(5)?,
                     body: row.get(6)?,
+                    body_type: row.get(7)?,
+                    auth_type: row.get(8)?,
+                    auth_data: row.get(9)?,
+                    extract_rules: row.get(10)?,
                     headers: Vec::new(),
                     params: Vec::new(),
-                    sort_order: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
+                    sort_order: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
                 })
             },
         )
@@ -553,7 +561,7 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
 
     let mut header_stmt = conn
         .prepare(
-            "SELECT id, request_id, key, value, enabled FROM request_headers WHERE request_id = ?1",
+            "SELECT id, request_id, key, value, enabled, carry_forward FROM request_headers WHERE request_id = ?1",
         )
         .map_err(|e| e.to_string())?;
 
@@ -565,6 +573,7 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
                 key: row.get(2)?,
                 value: row.get(3)?,
                 enabled: row.get::<_, i32>(4)? == 1,
+                carry_forward: row.get::<_, i32>(5).unwrap_or(0) == 1,
             })
         })
         .map_err(|e| e.to_string())?
@@ -572,7 +581,7 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
         .map_err(|e| e.to_string())?;
 
     let mut param_stmt = conn
-        .prepare("SELECT id, request_id, key, value, param_type, description, enabled FROM request_params WHERE request_id = ?1")
+        .prepare("SELECT id, request_id, key, value, param_type, description, enabled, carry_forward FROM request_params WHERE request_id = ?1")
         .map_err(|e| e.to_string())?;
 
     let params: Vec<RequestParam> = param_stmt
@@ -585,6 +594,7 @@ pub fn get_request(db: State<Database>, id: String) -> Result<Request, String> {
                 param_type: row.get(4)?,
                 description: row.get(5)?,
                 enabled: row.get::<_, i32>(6)? == 1,
+                carry_forward: row.get::<_, i32>(7).unwrap_or(0) == 1,
             })
         })
         .map_err(|e| e.to_string())?
@@ -607,8 +617,19 @@ pub fn update_request(db: State<Database>, input: UpdateRequestInput) -> Result<
         let timestamp = now();
 
         conn.execute(
-            "UPDATE requests SET name = ?1, method = ?2, url = ?3, body = ?4, updated_at = ?5 WHERE id = ?6",
-            (&input.name, &input.method, &input.url, &input.body, &timestamp, &input.id),
+            "UPDATE requests SET name = ?1, method = ?2, url = ?3, body = ?4, body_type = ?5, auth_type = ?6, auth_data = ?7, extract_rules = ?8, updated_at = ?9 WHERE id = ?10",
+            (
+                &input.name,
+                &input.method,
+                &input.url,
+                &input.body,
+                &input.body_type,
+                &input.auth_type,
+                &input.auth_data,
+                &input.extract_rules,
+                &timestamp,
+                &input.id,
+            ),
         )
         .map_err(|e| e.to_string())?;
 
@@ -627,8 +648,8 @@ pub fn update_request(db: State<Database>, input: UpdateRequestInput) -> Result<
         for h in input.headers {
             let header_id = generate_id();
             conn.execute(
-                "INSERT INTO request_headers (id, request_id, key, value, enabled) VALUES (?1, ?2, ?3, ?4, ?5)",
-                (&header_id, &input.id, &h.key, &h.value, h.enabled as i32),
+                "INSERT INTO request_headers (id, request_id, key, value, enabled, carry_forward) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                (&header_id, &input.id, &h.key, &h.value, h.enabled as i32, h.carry_forward as i32),
             )
             .map_err(|e| e.to_string())?;
         }
@@ -636,8 +657,8 @@ pub fn update_request(db: State<Database>, input: UpdateRequestInput) -> Result<
         for p in input.params {
             let param_id = generate_id();
             conn.execute(
-                "INSERT INTO request_params (id, request_id, key, value, param_type, description, enabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                (&param_id, &input.id, &p.key, &p.value, &p.param_type, &p.description, p.enabled as i32),
+                "INSERT INTO request_params (id, request_id, key, value, param_type, description, enabled, carry_forward) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                (&param_id, &input.id, &p.key, &p.value, &p.param_type, &p.description, p.enabled as i32, p.carry_forward as i32),
             )
             .map_err(|e| e.to_string())?;
         }
@@ -921,7 +942,7 @@ fn get_all_requests_in_collection(
 fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Request, String> {
     let request: Request = conn
         .query_row(
-            "SELECT id, collection_id, folder_id, name, method, url, body, sort_order, created_at, updated_at FROM requests WHERE id = ?1",
+            "SELECT id, collection_id, folder_id, name, method, url, body, body_type, auth_type, auth_data, extract_rules, sort_order, created_at, updated_at FROM requests WHERE id = ?1",
             [&id],
             |row| {
                 Ok(Request {
@@ -932,11 +953,15 @@ fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Reque
                     method: row.get(4)?,
                     url: row.get(5)?,
                     body: row.get(6)?,
+                    body_type: row.get(7)?,
+                    auth_type: row.get(8)?,
+                    auth_data: row.get(9)?,
+                    extract_rules: row.get(10)?,
                     headers: Vec::new(),
                     params: Vec::new(),
-                    sort_order: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
+                    sort_order: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
                 })
             },
         )
@@ -944,7 +969,7 @@ fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Reque
 
     let mut header_stmt = conn
         .prepare(
-            "SELECT id, request_id, key, value, enabled FROM request_headers WHERE request_id = ?1",
+            "SELECT id, request_id, key, value, enabled, carry_forward FROM request_headers WHERE request_id = ?1",
         )
         .map_err(|e| e.to_string())?;
 
@@ -956,6 +981,7 @@ fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Reque
                 key: row.get(2)?,
                 value: row.get(3)?,
                 enabled: row.get::<_, i32>(4)? == 1,
+                carry_forward: row.get::<_, i32>(5).unwrap_or(0) == 1,
             })
         })
         .map_err(|e| e.to_string())?
@@ -963,7 +989,7 @@ fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Reque
         .map_err(|e| e.to_string())?;
 
     let mut param_stmt = conn
-        .prepare("SELECT id, request_id, key, value, param_type, description, enabled FROM request_params WHERE request_id = ?1")
+        .prepare("SELECT id, request_id, key, value, param_type, description, enabled, carry_forward FROM request_params WHERE request_id = ?1")
         .map_err(|e| e.to_string())?;
 
     let params: Vec<RequestParam> = param_stmt
@@ -976,6 +1002,7 @@ fn get_request_internal(conn: &rusqlite::Connection, id: String) -> Result<Reque
                 param_type: row.get(4)?,
                 description: row.get(5)?,
                 enabled: row.get::<_, i32>(6)? == 1,
+                carry_forward: row.get::<_, i32>(7).unwrap_or(0) == 1,
             })
         })
         .map_err(|e| e.to_string())?
@@ -1045,4 +1072,236 @@ pub async fn stop_load_test(
     let mut tester = tester.lock().await;
     tester.stop();
     Ok(())
+}
+
+fn build_postman_collection(
+    conn: &rusqlite::Connection,
+    collection_id: &str,
+    name: &str,
+    description: Option<String>,
+) -> Result<PostmanCollection, String> {
+    let items = build_postman_item_recursive(conn, collection_id, None)?;
+
+    Ok(PostmanCollection {
+        info: Info {
+            name: name.to_string(),
+            description,
+            schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+                .to_string(),
+        },
+        item: items,
+    })
+}
+
+fn build_postman_item_recursive(
+    conn: &rusqlite::Connection,
+    collection_id: &str,
+    parent_id: Option<&str>,
+) -> Result<Vec<PostmanItem>, String> {
+    let mut items = Vec::new();
+
+    // Fetch folders
+    let mut folder_stmt = conn
+        .prepare("SELECT id, name, description FROM folders WHERE collection_id = ?1 AND parent_id IS ?2 ORDER BY sort_order")
+        .map_err(|e| e.to_string())?;
+
+    let folders = folder_stmt
+        .query_map(rusqlite::params![collection_id, parent_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    for (id, name, _desc) in folders {
+        let children = build_postman_item_recursive(conn, collection_id, Some(&id))?;
+        items.push(PostmanItem {
+            name: Some(name),
+            item: Some(children),
+            request: None,
+        });
+    }
+
+    // Fetch requests
+    let mut req_stmt = conn
+        .prepare("SELECT id, name, method, url, body, description FROM requests WHERE collection_id = ?1 AND folder_id IS ?2 ORDER BY sort_order")
+        .map_err(|e| e.to_string())?;
+
+    let requests = req_stmt
+        .query_map(rusqlite::params![collection_id, parent_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5).unwrap_or(None),
+            ))
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    for (id, name, method, url, body, description) in requests {
+        let postman_request =
+            convert_request_to_postman(conn, &id, method, url, body, description)?;
+        items.push(PostmanItem {
+            name: Some(name),
+            item: None,
+            request: Some(postman_request),
+        });
+    }
+
+    Ok(items)
+}
+
+fn convert_request_to_postman(
+    conn: &rusqlite::Connection,
+    request_id: &str,
+    method: String,
+    url: String,
+    body: Option<String>,
+    description: Option<String>,
+) -> Result<PostmanRequest, String> {
+    // Headers
+    let mut header_stmt = conn
+        .prepare("SELECT key, value, enabled FROM request_headers WHERE request_id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let headers = header_stmt
+        .query_map([request_id], |row| {
+            Ok(PostmanHeader {
+                key: row.get(0)?,
+                value: row.get(1)?,
+                description: None,
+                disabled: if row.get::<_, i32>(2)? == 1 {
+                    None
+                } else {
+                    Some(true)
+                },
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // Params (Query)
+    let mut param_stmt = conn
+        .prepare("SELECT key, value, description, enabled FROM request_params WHERE request_id = ?1 AND param_type = 'query'")
+        .map_err(|e| e.to_string())?;
+
+    let query_params = param_stmt
+        .query_map([request_id], |row| {
+            Ok(PostmanQueryParam {
+                key: Some(row.get(0)?),
+                value: Some(row.get(1)?),
+                description: row.get(2)?,
+                disabled: if row.get::<_, i32>(3)? == 1 {
+                    None
+                } else {
+                    Some(true)
+                },
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let postman_url = PostmanUrl::Object(PostmanUrlObject {
+        raw: url.clone(),
+        protocol: None,
+        host: None,
+        path: None,
+        query: if query_params.is_empty() {
+            None
+        } else {
+            Some(query_params)
+        },
+        variable: None,
+    });
+
+    let postman_body = if let Some(b) = body {
+        if !b.is_empty() {
+            Some(PostmanBody {
+                mode: Some("raw".to_string()),
+                raw: Some(b),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    Ok(PostmanRequest {
+        method,
+        header: headers,
+        url: postman_url,
+        body: postman_body,
+        description,
+    })
+}
+
+#[tauri::command]
+pub fn export_collection(db: State<Database>, collection_id: String) -> Result<String, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let (name, description): (String, Option<String>) = conn
+        .query_row(
+            "SELECT name, description FROM collections WHERE id = ?1",
+            [&collection_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|_| "Collection not found".to_string())?;
+
+    let collection = build_postman_collection(&conn, &collection_id, &name, description)?;
+
+    serde_json::to_string_pretty(&collection).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn export_all_collections(db: State<Database>) -> Result<String, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, name, description FROM collections ORDER BY name")
+        .map_err(|e| e.to_string())?;
+
+    let collections_iter = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut master_items = Vec::new();
+
+    for collection_res in collections_iter {
+        let (id, name, _description) = collection_res.map_err(|e| e.to_string())?;
+        let items = build_postman_item_recursive(&conn, &id, None)?;
+        master_items.push(PostmanItem {
+            name: Some(name),
+            item: Some(items),
+            request: None,
+        });
+    }
+
+    let master_collection = PostmanCollection {
+        info: Info {
+            name: "Apixa Export - All Collections".to_string(),
+            description: Some("Export of all collections from Apixa".to_string()),
+            schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+                .to_string(),
+        },
+        item: master_items,
+    };
+
+    serde_json::to_string_pretty(&master_collection).map_err(|e| e.to_string())
 }

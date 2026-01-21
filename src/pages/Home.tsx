@@ -181,17 +181,17 @@ function Home() {
                     <p className="text-sm text-slate-500 max-w-[320px] mt-2">Create your first collection to start organizing your requests.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredCollections.slice(0, 7).map((collection) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {filteredCollections.slice(0, 9).map((collection) => (
                       <CollectionGridCard
                         key={collection.id}
                         collection={collection}
                         onClick={() => navigate(`/collection/${collection.id}`)}
                       />
                     ))}
-                    {filteredCollections.length > 7 ? (
+                    {filteredCollections.length > 9 ? (
                       <ViewMoreCard
-                        remainingCount={filteredCollections.length - 7}
+                        remainingCount={filteredCollections.length - 9}
                         onClick={() => navigate("/collections")}
                       />
                     ) : (
@@ -261,22 +261,22 @@ function CollectionGridCard({ collection, onClick }: { collection: Collection, o
       variants={itemVariants}
       whileHover={{ y: -2 }}
       onClick={onClick}
-      className="group bg-white p-5 rounded-xl border border-slate-200 transition-all text-left flex flex-col gap-4 h-full min-h-[120px] active:scale-[0.98] cursor-pointer hover:border-blue-300 hover:bg-slate-50/50"
+      className="group bg-white p-4 rounded-xl border border-slate-200 transition-all text-left flex flex-col gap-3 h-full min-h-[100px] active:scale-[0.98] cursor-pointer hover:border-blue-300 hover:bg-slate-50/50"
     >
       <div className="flex items-center justify-between">
-        <div className="w-9 h-9 rounded-lg bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
-          <Folder size={18} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+        <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
+          <Folder size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
         </div>
-        <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-          <Clock size={10} />
+        <div className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+          <Clock size={8} />
           {new Date(collection.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
         </div>
       </div>
 
       <div className="flex-1">
-        <h4 className="text-[14px] font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1 tracking-tight">{collection.name}</h4>
+        <h4 className="text-[13px] font-bold text-slate-800 mb-0.5 group-hover:text-blue-600 transition-colors line-clamp-1 tracking-tight">{collection.name}</h4>
         {collection.description && (
-          <p className="text-[12px] text-slate-500 line-clamp-2 font-medium leading-relaxed italic opacity-80">
+          <p className="text-[11px] text-slate-500 line-clamp-2 font-medium leading-relaxed italic opacity-80">
             {collection.description}
           </p>
         )}

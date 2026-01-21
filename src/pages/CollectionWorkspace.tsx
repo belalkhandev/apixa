@@ -36,8 +36,8 @@ interface TabState {
   isNew?: boolean;
   body: string;
   bodyType: BodyType;
-  headers: { key: string; value: string; enabled: boolean }[];
-  params: Param[];
+  headers: { key: string; value: string; enabled: boolean; carry_forward: boolean }[];
+  params: (Param & { carry_forward: boolean })[];
   authType: AuthType;
   authData: Record<string, string>;
   extractRules: ExtractRule[];
@@ -54,8 +54,8 @@ const createDefaultTabState = (id: string, name: string = "New Request", method:
   isNew,
   body: "",
   bodyType: "json",
-  headers: [{ key: "", value: "", enabled: true }],
-  params: [{ key: "", value: "", param_type: "query", description: "", enabled: true }],
+  headers: [{ key: "", value: "", enabled: true, carry_forward: false }],
+  params: [{ key: "", value: "", param_type: "query", description: "", enabled: true, carry_forward: false }],
   authType: "none",
   authData: {},
   extractRules: [{ variable: "", path: "", enabled: true }],
@@ -380,15 +380,30 @@ function CollectionWorkspace() {
       const newTab = createDefaultTabState(requestId, requestName, requestMethod as HttpMethod, requestUrl);
       newTab.body = fullRequest.body || "";
       newTab.headers = fullRequest.headers.length > 0
-        ? fullRequest.headers.map(h => ({ key: h.key, value: h.value, enabled: h.enabled }))
-        : [{ key: "", value: "", enabled: true }];
+        ? fullRequest.headers.map(h => ({ key: h.key, value: h.value, enabled: h.enabled, carry_forward: h.carry_forward }))
+        : [{ key: "", value: "", enabled: true, carry_forward: false }];
       newTab.params = fullRequest.params.map(p => ({
         key: p.key,
         value: p.value,
         param_type: p.param_type,
         description: p.description || "",
-        enabled: p.enabled
+        enabled: p.enabled,
+        carry_forward: p.carry_forward
       }));
+
+      // Load additional fields
+      newTab.bodyType = (fullRequest.body_type as BodyType) || "json";
+      newTab.authType = (fullRequest.auth_type as AuthType) || "none";
+      try {
+        newTab.authData = fullRequest.auth_data ? JSON.parse(fullRequest.auth_data) : {};
+      } catch {
+        newTab.authData = {};
+      }
+      try {
+        newTab.extractRules = fullRequest.extract_rules ? JSON.parse(fullRequest.extract_rules) : [];
+      } catch {
+        newTab.extractRules = [];
+      }
 
       setOpenTabs([...openTabs, newTab]);
       setActiveTabId(requestId);
@@ -470,7 +485,8 @@ function CollectionWorkspace() {
       const headersList = activeTab.headers.filter(h => h.key.trim() !== "").map(h => ({
         key: h.key,
         value: h.value,
-        enabled: h.enabled
+        enabled: h.enabled,
+        carry_forward: h.carry_forward || false
       }));
 
       const paramsList = activeTab.params.filter(p => p.key.trim() !== "").map(p => ({
@@ -478,7 +494,8 @@ function CollectionWorkspace() {
         value: p.value,
         param_type: p.param_type || "query",
         description: p.description || null,
-        enabled: p.enabled
+        enabled: p.enabled,
+        carry_forward: p.carry_forward || false
       }));
 
       // If currentRequest exists, it's an update
@@ -489,6 +506,10 @@ function CollectionWorkspace() {
           activeTab.method,
           activeTab.url,
           activeTab.body || null,
+          activeTab.bodyType,
+          activeTab.authType,
+          JSON.stringify(activeTab.authData),
+          JSON.stringify(activeTab.extractRules),
           headersList,
           paramsList
         );
@@ -509,6 +530,10 @@ function CollectionWorkspace() {
             activeTab.method,
             activeTab.url,
             activeTab.body || null,
+            activeTab.bodyType,
+            activeTab.authType,
+            JSON.stringify(activeTab.authData),
+            JSON.stringify(activeTab.extractRules),
             headersList,
             paramsList
           );
@@ -673,6 +698,20 @@ function CollectionWorkspace() {
         response: responseData
       });
 
+      // Handle Carry Forward
+      if (selectedEnvId) {
+        // Headers carry forward
+        activeTab.headers.forEach(h => {
+          if (h.carry_forward && h.key) {
+            const respValue = res.headers[h.key] || res.headers[h.key.toLowerCase()];
+            if (respValue) {
+              handleUpdateVariable(h.key, respValue);
+            }
+          }
+        });
+      }
+
+      // Handle Extract Rules
       if (activeTab.extractRules && activeTab.extractRules.length > 0 && selectedEnvId) {
         try {
           const jsonBody = JSON.parse(res.body);
@@ -685,10 +724,11 @@ function CollectionWorkspace() {
             }
           }
         } catch {
+          // Body might not be JSON
         }
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
       updateActiveTab({
         isLoading: false,
         error: err instanceof Error ? err.message : "Request failed"
@@ -703,7 +743,8 @@ function CollectionWorkspace() {
       const headersList = activeTab.headers.filter(h => h.key.trim() !== "").map(h => ({
         key: h.key,
         value: h.value,
-        enabled: h.enabled
+        enabled: h.enabled,
+        carry_forward: h.carry_forward || false
       }));
 
       const paramsList = activeTab.params.filter(p => p.key.trim() !== "").map(p => ({
@@ -711,7 +752,8 @@ function CollectionWorkspace() {
         value: p.value,
         param_type: p.param_type || "query",
         description: p.description || null,
-        enabled: p.enabled
+        enabled: p.enabled,
+        carry_forward: p.carry_forward || false
       }));
 
       let savedRequest = await api.createRequest(
@@ -729,6 +771,10 @@ function CollectionWorkspace() {
           activeTab.method,
           activeTab.url,
           activeTab.body || null,
+          activeTab.bodyType,
+          activeTab.authType,
+          JSON.stringify(activeTab.authData),
+          JSON.stringify(activeTab.extractRules),
           headersList,
           paramsList
         );

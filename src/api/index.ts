@@ -42,6 +42,10 @@ export interface Request {
   method: string;
   url: string;
   body: string | null;
+  body_type: string | null;
+  auth_type: string | null;
+  auth_data: string | null;
+  extract_rules: string | null;
   headers: RequestHeader[];
   params: RequestParam[];
   sort_order: number;
@@ -55,6 +59,7 @@ export interface RequestHeader {
   key: string;
   value: string;
   enabled: boolean;
+  carry_forward: boolean;
 }
 
 export interface RequestParam {
@@ -65,6 +70,7 @@ export interface RequestParam {
   param_type: string;
   description: string | null;
   enabled: boolean;
+  carry_forward: boolean;
 }
 
 export interface FolderWithItems {
@@ -156,11 +162,27 @@ export const api = {
     method: string,
     url: string,
     body: string | null,
-    headers: { key: string; value: string; enabled: boolean }[],
-    params: { key: string; value: string; param_type: string; description: string | null; enabled: boolean }[]
+    body_type: string | null,
+    auth_type: string | null,
+    auth_data: string | null,
+    extract_rules: string | null,
+    headers: { key: string; value: string; enabled: boolean; carry_forward: boolean }[],
+    params: { key: string; value: string; param_type: string; description: string | null; enabled: boolean; carry_forward: boolean }[]
   ) =>
     invoke<Request>("update_request", {
-      input: { id, name, method, url, body, headers, params },
+      input: {
+        id,
+        name,
+        method,
+        url,
+        body,
+        body_type,
+        auth_type,
+        auth_data,
+        extract_rules,
+        headers,
+        params,
+      },
     }),
 
   deleteRequest: (id: string) =>
@@ -191,6 +213,12 @@ export const api = {
 
   stopLoadTest: () =>
     invoke<void>("stop_load_test"),
+
+  exportCollection: (collectionId: string) =>
+    invoke<string>("export_collection", { collectionId }),
+
+  exportAllCollections: () =>
+    invoke<string>("export_all_collections"),
 };
 
 export interface LoadTestConfig {
@@ -209,6 +237,15 @@ export interface RecordedRequest {
   status: number;
   latency_ms: number;
   error: string | null;
+  error_category: string | null;
+  bytes_sent: number;
+  bytes_received: number;
+}
+
+export interface HistogramBucket {
+  range_start: number;
+  range_end: number;
+  count: number;
 }
 
 export interface LoadTestProgress {
@@ -220,6 +257,14 @@ export interface LoadTestProgress {
   avg_latency_ms: number;
   min_latency_ms: number;
   max_latency_ms: number;
+  p50_latency_ms: number;
+  p90_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  bytes_sent: number;
+  bytes_received: number;
+  error_categories: Record<string, number>;
+  latency_histogram: HistogramBucket[];
   is_finished: boolean;
   recent_results: RecordedRequest[];
 }
