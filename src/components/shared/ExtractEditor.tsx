@@ -1,4 +1,6 @@
 import { X } from "lucide-react";
+import VariableInput from "./VariableInput";
+import { Environment } from "../../api";
 
 export interface ExtractRule {
     variable: string;
@@ -9,9 +11,12 @@ export interface ExtractRule {
 interface ExtractEditorProps {
     rules: ExtractRule[];
     onChange: (rules: ExtractRule[]) => void;
+    environments: Environment[];
+    selectedEnvId: string | null;
+    onUpdateVariable?: (name: string, newValue: string) => void;
 }
 
-function ExtractEditor({ rules, onChange }: ExtractEditorProps) {
+function ExtractEditor({ rules, onChange, environments, selectedEnvId, onUpdateVariable }: ExtractEditorProps) {
     const updateRule = (index: number, field: keyof ExtractRule, value: string | boolean) => {
         const newRules = [...rules];
         newRules[index] = { ...newRules[index], [field]: value };
@@ -40,48 +45,53 @@ function ExtractEditor({ rules, onChange }: ExtractEditorProps) {
         : [{ variable: "", path: "", enabled: true }];
 
     return (
-        <div>
-            <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-slate-700">Extract Variables from Response</h4>
+        <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex flex-col gap-1">
+                    <h4 className="text-sm font-bold text-slate-800">Extract Variables</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Extract values from JSON response into environment variables.</p>
+                </div>
             </div>
-            <div className="border border-slate-200 rounded-lg overflow-hidden shrink-0">
-                <div className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
-                    <span className="text-xs font-medium text-slate-600">Variable Name</span>
-                    <span className="text-xs font-medium text-slate-600">Response Path</span>
+
+            <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                <div className="grid grid-cols-[1fr_1.5fr_40px] gap-3 px-4 py-2 bg-slate-50/50 border-b border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variable Name</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">JSON Path</span>
                     <span></span>
                 </div>
                 {displayRules.map((rule, index) => (
                     <div
                         key={index}
-                        className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-1.5 border-b border-slate-100 last:border-b-0 items-center"
-                        style={{ minHeight: "36px" }}
+                        className="grid grid-cols-[1fr_1.5fr_40px] gap-3 px-4 py-2 border-b border-slate-100 last:border-b-0 items-center group transition-colors hover:bg-slate-50/30"
+                        style={{ minHeight: "44px" }}
                     >
-                        <input
-                            type="text"
+                        <VariableInput
                             value={rule.variable}
-                            onChange={(e) => updateRule(index, "variable", e.target.value)}
-                            placeholder="e.g., token"
-                            className="w-full h-[28px] px-2 text-sm border border-slate-200 rounded focus:outline-none focus:border-blue-400 placeholder:text-slate-400"
+                            onChange={(val) => updateRule(index, "variable", val)}
+                            placeholder="e.g. token"
+                            className="h-[32px]"
+                            environments={environments}
+                            selectedEnvId={selectedEnvId}
+                            onUpdateVariable={onUpdateVariable}
                         />
-                        <input
-                            type="text"
-                            value={rule.path}
-                            onChange={(e) => updateRule(index, "path", e.target.value)}
-                            placeholder="e.g., data.access_token"
-                            className="w-full h-[28px] px-2 text-sm border border-slate-200 rounded focus:outline-none focus:border-blue-400 placeholder:text-slate-400 font-mono text-xs"
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={rule.path}
+                                onChange={(e) => updateRule(index, "path", e.target.value)}
+                                placeholder="e.g. data.access_token"
+                                className="w-full h-[32px] px-3 text-[13px] border-b border-transparent focus:border-blue-400 focus:outline-none transition-all placeholder:text-slate-300 font-mono text-slate-600 bg-transparent"
+                            />
+                        </div>
                         <button
                             onClick={() => removeRule(index)}
-                            className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                            className="p-1.5 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
                         >
-                            <X size={14} />
+                            <X size={16} />
                         </button>
                     </div>
                 ))}
             </div>
-            <p className="mt-2 text-xs text-slate-400">
-                Path examples: <code className="bg-slate-100 px-1 rounded">data.token</code>, <code className="bg-slate-100 px-1 rounded">user.id</code>, <code className="bg-slate-100 px-1 rounded">items.0.name</code>
-            </p>
         </div>
     );
 }

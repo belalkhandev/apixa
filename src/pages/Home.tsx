@@ -10,7 +10,9 @@ import {
   Import,
   PlayCircle,
   Search,
-  Clock
+  Clock,
+  ExternalLink,
+  ChevronRight
 } from "lucide-react";
 import NewCollectionModal from "../components/NewCollectionModal";
 import ImportCollectionModal from "../components/ImportCollectionModal";
@@ -30,13 +32,13 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.4,
-      ease: [0.25, 0.1, 0.25, 1.0] as any // Smooth ease-out
+      duration: 0.35,
+      ease: [0.25, 0.1, 0.25, 1.0] as any
     }
   }
 };
@@ -81,7 +83,7 @@ function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] font-inter relative overflow-hidden">
+    <div className="min-h-screen bg-white font-inter text-slate-900 overflow-x-hidden selection:bg-indigo-50">
       <AnimatePresence>
         {isLoading ? (
           <motion.div
@@ -89,9 +91,9 @@ function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-[#fafbfc]"
+            className="fixed inset-0 flex items-center justify-center z-50 bg-white"
           >
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
           </motion.div>
         ) : (
           <motion.div
@@ -99,130 +101,107 @@ function Home() {
             initial="hidden"
             animate="show"
             variants={containerVariants}
-            className="flex flex-col items-center w-full min-h-screen relative z-10"
+            className="flex flex-col items-center w-full min-h-screen relative py-16 pb-32"
           >
-            {/* Top Navigation Bar */}
-            <header className="w-full max-w-6xl px-8 flex items-center py-12">
-              <motion.div variants={itemVariants} className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-slate-900 flex items-center justify-center">
-                  <Terminal size={22} className="text-white" />
+            {/* 1. Logo Section - Minimal 'Apixa' */}
+            <motion.div variants={itemVariants} className="mb-8 flex flex-col items-center gap-2">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center">
+                <Terminal size={24} className="text-white" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-slate-900">Apixa</span>
+            </motion.div>
+
+            {/* 2. Welcome Section - Simple Text */}
+            <motion.div variants={itemVariants} className="text-center mb-12">
+              <h1 className="text-lg font-bold text-slate-400 uppercase tracking-[0.2em]">Workspace Dashboard</h1>
+            </motion.div>
+
+            {/* 3. Three Compact Action Cards */}
+            <motion.div variants={itemVariants} className="flex gap-4 mb-24">
+              <MinimalActionCard
+                label="New Request"
+                icon={<Zap size={18} />}
+                onClick={() => navigate("/quick-request")}
+              />
+              <MinimalActionCard
+                label="Import"
+                icon={<Import size={18} />}
+                onClick={() => setIsImportModalOpen(true)}
+              />
+              <MinimalActionCard
+                label="Runner"
+                icon={<PlayCircle size={18} />}
+                onClick={() => setIsSelectModalOpen(true)}
+              />
+            </motion.div>
+
+            {/* 4. Collections Section */}
+            <div className="w-full max-w-5xl px-12 flex flex-col">
+              {/* Collection Header */}
+              <motion.div variants={itemVariants} className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Collections</h2>
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100">
+                    {collections.length} UNITS
+                  </span>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Apixa</h1>
+                <div className="flex items-center gap-4">
+                  <div className="relative group">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-4 h-9 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium w-48 focus:outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 h-9 bg-indigo-600 text-[11px] font-bold text-white rounded-xl hover:bg-slate-900 transition-all active:scale-95 shadow-none"
+                  >
+                    <Plus size={14} />
+                    NEW PROJECT
+                  </button>
+                </div>
               </motion.div>
-            </header>
 
-            <main className="w-full max-w-6xl px-8 py-4 flex flex-col gap-14">
-              <motion.div variants={itemVariants} className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Welcome to your workspace</h2>
-                <p className="text-sm text-slate-500 font-medium opacity-80">Manage your API requests and collections in one place.</p>
-              </motion.div>
+              {/* 5. Collection List View */}
+              {filteredCollections.length === 0 ? (
+                <motion.div variants={itemVariants} className="py-24 border border-slate-100 border-dashed rounded-[32px] flex flex-col items-center justify-center text-center bg-slate-50/20">
+                  <Folder size={32} className="text-slate-200 mb-4" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Workspace is empty</p>
+                </motion.div>
+              ) : (
+                <motion.div variants={itemVariants} className="flex flex-col divide-y divide-slate-50">
+                  {filteredCollections.slice(0, 10).map((collection) => (
+                    <CollectionRowItem
+                      key={collection.id}
+                      collection={collection}
+                      onClick={() => navigate(`/collection/${collection.id}`)}
+                    />
+                  ))}
+                </motion.div>
+              )}
 
-              {/* Action Cards */}
-              <motion.section variants={itemVariants}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <ActionCard
-                    title="New Request"
-                    description="Fast HTTP testing without overhead"
-                    icon={<Zap size={22} className="text-emerald-500" />}
-                    color="emerald"
-                    onClick={() => navigate("/quick-request")}
-                  />
-                  <ActionCard
-                    title="Load Test"
-                    description="Execute performance runs on collections"
-                    icon={<PlayCircle size={22} className="text-blue-500" />}
-                    color="blue"
-                    onClick={() => setIsSelectModalOpen(true)}
-                  />
-                  <ActionCard
-                    title="Import"
-                    description="Load collections from file or URL"
-                    icon={<Import size={22} className="text-indigo-500" />}
-                    color="indigo"
-                    onClick={() => setIsImportModalOpen(true)}
-                  />
-                </div>
-              </motion.section>
+              {/* 6. Show All Button */}
+              {filteredCollections.length > 10 && (
+                <motion.div variants={itemVariants} className="mt-12 flex justify-center">
+                  <button
+                    onClick={() => navigate("/collections")}
+                    className="flex items-center gap-3 px-8 h-12 bg-white border border-slate-200 rounded-2xl text-[11px] font-black tracking-[0.2em] text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95 group"
+                  >
+                    SHOW ALL COLLECTIONS
+                    <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </motion.div>
+              )}
+            </div>
 
-              {/* Collections Section */}
-              <motion.section variants={itemVariants} className="mb-32">
-                <div className="flex items-center justify-between mb-6 px-1">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Collections</h3>
-                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{collections.length}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="relative group">
-                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
-                      <input
-                        type="text"
-                        placeholder="Search collections..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-72 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                      />
-                    </div>
-                    <button
-                      onClick={() => setIsModalOpen(true)}
-                      className="flex items-center gap-2 px-6 h-12 bg-blue-600 text-xs font-bold text-white rounded-xl hover:bg-blue-700 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-                    >
-                      <Plus size={16} />
-                      NEW COLLECTION
-                    </button>
-                  </div>
-                </div>
-
-                {filteredCollections.length === 0 ? (
-                  <div className="bg-white rounded-3xl border border-slate-200 border-dashed p-24 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-6">
-                      <Folder size={32} className="text-slate-300" />
-                    </div>
-                    <h4 className="text-lg font-bold text-slate-800">No collections found</h4>
-                    <p className="text-sm text-slate-500 max-w-[320px] mt-2">Create your first collection to start organizing your requests.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filteredCollections.slice(0, 9).map((collection) => (
-                      <CollectionGridCard
-                        key={collection.id}
-                        collection={collection}
-                        onClick={() => navigate(`/collection/${collection.id}`)}
-                      />
-                    ))}
-                    {filteredCollections.length > 9 ? (
-                      <ViewMoreCard
-                        remainingCount={filteredCollections.length - 9}
-                        onClick={() => navigate("/collections")}
-                      />
-                    ) : (
-                      <NewCollectionCard onClick={() => setIsModalOpen(true)} />
-                    )}
-                  </div>
-                )}
-              </motion.section>
-            </main>
-
-            <NewCollectionModal
-              isOpen={isModalOpen}
-              onClose={() => setIsModalOpen(false)}
-              onCreate={handleCreateCollection}
-            />
-
-            <ImportCollectionModal
-              isOpen={isImportModalOpen}
-              onClose={() => setIsImportModalOpen(false)}
-              onImportSuccess={(collection) => {
-                setCollections([collection, ...collections]);
-                navigate(`/collection/${collection.id}`);
-              }}
-            />
-
-            <SelectCollectionModal
-              isOpen={isSelectModalOpen}
-              onClose={() => setIsSelectModalOpen(false)}
-              collections={collections}
-              onSelect={(id) => navigate(`/runner/${id}`)}
-            />
+            {/* Modals */}
+            <NewCollectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCreate={handleCreateCollection} />
+            <ImportCollectionModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onImportSuccess={(c) => { setCollections([c, ...collections]); navigate(`/collection/${c.id}`); }} />
+            <SelectCollectionModal isOpen={isSelectModalOpen} onClose={() => setIsSelectModalOpen(false)} collections={collections} onSelect={(id) => navigate(`/runner/${id}`)} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -230,92 +209,48 @@ function Home() {
   );
 }
 
-function ActionCard({ title, description, icon, color, onClick }: { title: string, description: string, icon: React.ReactNode, color: string, onClick: () => void }) {
-  const iconColors: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-600",
-    blue: "bg-blue-50 text-blue-600",
-    indigo: "bg-indigo-50 text-indigo-600",
-  };
-
+function MinimalActionCard({ label, icon, onClick }: { label: string, icon: React.ReactNode, onClick: () => void }) {
   return (
-    <motion.button
-      variants={itemVariants}
-      whileHover={{ y: -2 }}
+    <button
       onClick={onClick}
-      className="flex flex-col gap-4 p-6 text-left rounded-xl bg-white border border-slate-200 transition-all active:scale-[0.98] group cursor-pointer hover:border-blue-300"
+      className="flex items-center gap-3 px-6 h-12 bg-white border border-slate-200 rounded-2xl hover:border-indigo-400 hover:bg-slate-50 transition-all active:scale-[0.98] group"
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${iconColors[color]}`}>
-        {icon}
-      </div>
-      <div>
-        <h3 className="text-[13px] font-bold text-slate-800 leading-tight mb-0.5 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{title}</h3>
-        <p className="text-xs text-slate-500 leading-relaxed font-medium line-clamp-1">{description}</p>
-      </div>
-    </motion.button>
+      <span className="text-indigo-600 group-hover:scale-110 transition-transform">{icon}</span>
+      <span className="text-[13px] font-bold text-slate-800 tracking-tight">{label}</span>
+    </button>
   );
 }
 
-function CollectionGridCard({ collection, onClick }: { collection: Collection, onClick: () => void }) {
+function CollectionRowItem({ collection, onClick }: { collection: Collection, onClick: () => void }) {
   return (
-    <motion.button
-      variants={itemVariants}
-      whileHover={{ y: -2 }}
+    <button
       onClick={onClick}
-      className="group bg-white p-4 rounded-xl border border-slate-200 transition-all text-left flex flex-col gap-3 h-full min-h-[100px] active:scale-[0.98] cursor-pointer hover:border-blue-300 hover:bg-slate-50/50"
+      className="group flex items-center justify-between py-6 px-2 hover:bg-slate-50/50 transition-all text-left first:rounded-t-2xl last:rounded-b-2xl border-b border-slate-50 last:border-b-0"
     >
-      <div className="flex items-center justify-between">
-        <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
-          <Folder size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+      <div className="flex items-center gap-5">
+        <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-indigo-600 flex items-center justify-center transition-all">
+          <Folder size={18} className="text-slate-400 group-hover:text-white transition-colors" />
         </div>
-        <div className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-          <Clock size={8} />
-          {new Date(collection.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+        <div>
+          <div className="text-[17px] font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors uppercase">
+            {collection.name}
+          </div>
+          <div className="text-xs text-slate-400 font-medium italic opacity-70 truncate max-w-[320px]">
+            {collection.description || "Project environment active..."}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1">
-        <h4 className="text-[13px] font-bold text-slate-800 mb-0.5 group-hover:text-blue-600 transition-colors line-clamp-1 tracking-tight">{collection.name}</h4>
-        {collection.description && (
-          <p className="text-[11px] text-slate-500 line-clamp-2 font-medium leading-relaxed italic opacity-80">
-            {collection.description}
-          </p>
-        )}
+      <div className="flex items-center gap-10">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+          <Clock size={14} className="opacity-60" />
+          {new Date(collection.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+        </div>
+        <div className="w-9 h-9 rounded-full bg-slate-50 group-hover:bg-indigo-600 flex items-center justify-center text-slate-300 group-hover:text-white transition-all transform group-hover:translate-x-1">
+          <ExternalLink size={16} />
+        </div>
       </div>
-    </motion.button>
-  );
-}
-
-function NewCollectionCard({ onClick }: { onClick: () => void }) {
-  return (
-    <motion.button
-      variants={itemVariants}
-      whileHover={{ y: -2 }}
-      onClick={onClick}
-      className="group p-5 rounded-xl border border-slate-200 border-dashed transition-all flex flex-col items-center justify-center gap-3 min-h-[160px] active:scale-[0.98] cursor-pointer hover:border-blue-300 hover:bg-blue-50/30"
-    >
-      <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
-        <Plus size={20} className="text-slate-400 group-hover:text-blue-500" />
-      </div>
-      <div className="text-center">
-        <span className="text-[13px] font-bold text-slate-500 group-hover:text-blue-600 uppercase tracking-widest">New Collection</span>
-      </div>
-    </motion.button>
-  );
-}
-
-function ViewMoreCard({ remainingCount, onClick }: { remainingCount: number, onClick: () => void }) {
-  return (
-    <motion.button
-      variants={itemVariants}
-      whileHover={{ y: -2 }}
-      onClick={onClick}
-      className="group bg-slate-50 p-5 rounded-xl border border-slate-200 transition-all text-left flex flex-col items-center justify-center gap-3 min-h-[120px] active:scale-[0.98] cursor-pointer hover:border-blue-300 hover:bg-white"
-    >
-      <div className="text-center">
-        <div className="text-2xl font-bold text-blue-600 mb-1">+{remainingCount}</div>
-        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-blue-600 transition-colors">View All Collections</div>
-      </div>
-    </motion.button>
+    </button>
   );
 }
 

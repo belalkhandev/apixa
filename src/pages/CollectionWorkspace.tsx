@@ -705,20 +705,36 @@ function CollectionWorkspace() {
         });
       }
 
-      // Handle Extract Rules
-      if (activeTab.extractRules && activeTab.extractRules.length > 0 && selectedEnvId) {
-        try {
-          const jsonBody = JSON.parse(res.body);
-          for (const rule of activeTab.extractRules) {
-            if (rule.enabled && rule.variable.trim() && rule.path.trim()) {
-              const extractedValue = extractValueFromPath(jsonBody, rule.path);
+      // Handle Auth Carry Forward
+      if (selectedEnvId) {
+        if (activeTab.authType === "bearer" && activeTab.authData.token_pinned && activeTab.authData.token_path) {
+          const varMatch = activeTab.authData.token.match(/{{([^}]+)}}/);
+          const varName = varMatch ? varMatch[1] : null;
+
+          if (varName) {
+            try {
+              const jsonBody = JSON.parse(res.body);
+              const extractedValue = extractValueFromPath(jsonBody, activeTab.authData.token_path);
               if (extractedValue !== null) {
-                handleUpdateVariable(rule.variable, extractedValue);
+                handleUpdateVariable(varName, String(extractedValue));
               }
+            } catch {
+              // Body might not be JSON or extraction failed
             }
           }
-        } catch {
-          // Body might not be JSON
+        } else if (activeTab.authType === "api-key" && activeTab.authData.value_pinned && activeTab.authData.value_path) {
+          const varMatch = activeTab.authData.value.match(/{{([^}]+)}}/);
+          const varName = varMatch ? varMatch[1] : null;
+
+          if (varName) {
+            try {
+              const jsonBody = JSON.parse(res.body);
+              const extractedValue = extractValueFromPath(jsonBody, activeTab.authData.value_path);
+              if (extractedValue !== null) {
+                handleUpdateVariable(varName, String(extractedValue));
+              }
+            } catch { }
+          }
         }
       }
     } catch (err) {

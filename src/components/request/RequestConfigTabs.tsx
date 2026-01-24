@@ -153,6 +153,9 @@ function RequestConfigTabs({
                     <ExtractEditor
                         rules={extractRules || [{ variable: "", path: "", enabled: true }]}
                         onChange={onExtractRulesChange}
+                        environments={environments}
+                        selectedEnvId={selectedEnvId}
+                        onUpdateVariable={onUpdateVariable}
                     />
                 )}
             </div>
