@@ -79,7 +79,25 @@ pub fn run() {
             start_load_test,
             stop_load_test,
             export_collection,
-            export_all_collections
+            export_all_collections,
+            // Notes commands
+            get_notes,
+            create_note,
+            update_note,
+            delete_note,
+            toggle_note_pin,
+            // Projects commands
+            get_projects,
+            create_project,
+            update_project,
+            delete_project,
+            // Todos commands
+            get_todos,
+            create_todo,
+            update_todo,
+            delete_todo,
+            update_todo_status,
+            update_challenge_timer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

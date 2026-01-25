@@ -57,7 +57,7 @@ export function ConfirmModal({
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-md bg-white rounded-2xl shadow overflow-hidden"
                     >
                         <div className="p-6">
                             <div className="flex items-start gap-4">

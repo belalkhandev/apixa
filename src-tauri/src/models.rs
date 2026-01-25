@@ -237,3 +237,110 @@ pub struct LoadTestProgress {
     pub is_finished: bool,
     pub recent_results: Vec<RecordedRequest>,
 }
+
+// ==================== Notes ====================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Note {
+    pub id: String,
+    pub title: String,
+    pub content: Option<String>,
+    pub is_pinned: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateNoteInput {
+    pub title: String,
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateNoteInput {
+    pub id: String,
+    pub title: String,
+    pub content: Option<String>,
+}
+
+// ==================== Projects ====================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Project {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateProjectInput {
+    pub name: String,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateProjectInput {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
+// ==================== Todos ====================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Todo {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub priority: String,
+    pub due_date: Option<String>,
+    pub project_id: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub is_challenge: bool,
+    pub challenge_duration_minutes: Option<i32>,
+    pub challenge_elapsed_seconds: i32,
+    pub challenge_started_at: Option<String>,
+    pub challenge_is_paused: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTodoInput {
+    pub title: String,
+    pub description: Option<String>,
+    pub priority: String,
+    pub due_date: Option<String>,
+    pub project_id: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub is_challenge: Option<bool>,
+    pub challenge_duration_minutes: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateTodoInput {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub priority: String,
+    pub due_date: Option<String>,
+    pub project_id: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub is_challenge: Option<bool>,
+    pub challenge_duration_minutes: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateChallengeTimerInput {
+    pub id: String,
+    pub challenge_elapsed_seconds: i32,
+    pub challenge_started_at: Option<String>,
+    pub challenge_is_paused: bool,
+}

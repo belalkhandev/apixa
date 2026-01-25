@@ -226,6 +226,122 @@ export const api = {
 
   exportAllCollections: () =>
     invoke<string>("export_all_collections"),
+
+  // ==================== Notes ====================
+
+  getNotes: () => invoke<Note[]>("get_notes"),
+
+  createNote: (title: string, content?: string) =>
+    invoke<Note>("create_note", {
+      input: { title, content: content || null },
+    }),
+
+  updateNote: (id: string, title: string, content?: string) =>
+    invoke<Note>("update_note", {
+      input: { id, title, content: content || null },
+    }),
+
+  deleteNote: (id: string) =>
+    invoke<void>("delete_note", { id }),
+
+  toggleNotePin: (id: string, isPinned: boolean) =>
+    invoke<Note>("toggle_note_pin", { id, isPinned }),
+
+  // ==================== Projects ====================
+
+  getProjects: () => invoke<Project[]>("get_projects"),
+
+  createProject: (name: string, color?: string) =>
+    invoke<Project>("create_project", {
+      input: { name, color: color || null },
+    }),
+
+  updateProject: (id: string, name: string, color: string) =>
+    invoke<Project>("update_project", {
+      input: { id, name, color },
+    }),
+
+  deleteProject: (id: string) =>
+    invoke<void>("delete_project", { id }),
+
+  // ==================== Todos ====================
+
+  getTodos: () => invoke<Todo[]>("get_todos"),
+
+  createTodo: (input: {
+    title: string;
+    priority: string;
+    description?: string;
+    dueDate?: string;
+    projectId?: string;
+    startDate?: string;
+    endDate?: string;
+    isChallenge?: boolean;
+    challengeDurationMinutes?: number;
+  }) =>
+    invoke<Todo>("create_todo", {
+      input: {
+        title: input.title,
+        description: input.description || null,
+        priority: input.priority,
+        due_date: input.dueDate || null,
+        project_id: input.projectId || null,
+        start_date: input.startDate || null,
+        end_date: input.endDate || null,
+        is_challenge: input.isChallenge || null,
+        challenge_duration_minutes: input.challengeDurationMinutes || null,
+      },
+    }),
+
+  updateTodo: (input: {
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    description?: string;
+    dueDate?: string;
+    projectId?: string;
+    startDate?: string;
+    endDate?: string;
+    isChallenge?: boolean;
+    challengeDurationMinutes?: number;
+  }) =>
+    invoke<Todo>("update_todo", {
+      input: {
+        id: input.id,
+        title: input.title,
+        description: input.description || null,
+        status: input.status,
+        priority: input.priority,
+        due_date: input.dueDate || null,
+        project_id: input.projectId || null,
+        start_date: input.startDate || null,
+        end_date: input.endDate || null,
+        is_challenge: input.isChallenge || null,
+        challenge_duration_minutes: input.challengeDurationMinutes || null,
+      },
+    }),
+
+  deleteTodo: (id: string) =>
+    invoke<void>("delete_todo", { id }),
+
+  updateTodoStatus: (id: string, status: string) =>
+    invoke<Todo>("update_todo_status", { id, status }),
+
+  updateChallengeTimer: (
+    id: string,
+    challengeElapsedSeconds: number,
+    challengeStartedAt: string | null,
+    challengeIsPaused: boolean
+  ) =>
+    invoke<Todo>("update_challenge_timer", {
+      input: {
+        id,
+        challenge_elapsed_seconds: challengeElapsedSeconds,
+        challenge_started_at: challengeStartedAt,
+        challenge_is_paused: challengeIsPaused,
+      },
+    }),
 };
 
 export interface LoadTestConfig {
@@ -274,4 +390,46 @@ export interface LoadTestProgress {
   latency_histogram: HistogramBucket[];
   is_finished: boolean;
   recent_results: RecordedRequest[];
+}
+
+// ==================== Notes ====================
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ==================== Projects ====================
+
+export interface Project {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ==================== Todos ====================
+
+export interface Todo {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  project_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_challenge: boolean;
+  challenge_duration_minutes: number | null;
+  challenge_elapsed_seconds: number;
+  challenge_started_at: string | null;
+  challenge_is_paused: boolean;
+  created_at: string;
+  updated_at: string;
 }

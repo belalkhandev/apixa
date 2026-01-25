@@ -7,7 +7,6 @@ import {
     Users,
     Clock,
     Zap,
-    AlertCircle,
     BarChart3,
     Timer,
     Activity,
@@ -129,7 +128,7 @@ export default function Runner() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="flex flex-col h-full">
             {/* Header */}
             <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-4">
@@ -184,7 +183,7 @@ export default function Runner() {
                 </div>
             </header>
 
-            <main className="flex-1 p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <main className="flex-1 p-6 w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Config Sidebar */}
                 <div className="lg:col-span-1 space-y-6">
                     <section className="bg-white rounded-2xl border border-slate-200 p-6">

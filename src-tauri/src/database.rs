@@ -103,6 +103,51 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_env_vars_environment ON environment_variables(environment_id);
             CREATE INDEX IF NOT EXISTS idx_request_headers_request ON request_headers(request_id);
             CREATE INDEX IF NOT EXISTS idx_request_params_request ON request_params(request_id);
+
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT,
+                is_pinned INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_notes_pinned ON notes(is_pinned DESC, updated_at DESC);
+
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                color TEXT NOT NULL DEFAULT '#3b82f6',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
+
+            CREATE TABLE IF NOT EXISTS todos (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                priority TEXT NOT NULL DEFAULT 'medium',
+                due_date TEXT,
+                project_id TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                is_challenge INTEGER NOT NULL DEFAULT 0,
+                challenge_duration_minutes INTEGER,
+                challenge_elapsed_seconds INTEGER NOT NULL DEFAULT 0,
+                challenge_started_at TEXT,
+                challenge_is_paused INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
+            CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority);
+            CREATE INDEX IF NOT EXISTS idx_todos_created ON todos(created_at DESC);
             "
         )?;
 
@@ -120,6 +165,37 @@ impl Database {
         );
         let _ = conn.execute(
             "ALTER TABLE request_params ADD COLUMN carry_forward INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+
+        // Add new columns for todos (for existing databases)
+        let _ = conn.execute("ALTER TABLE todos ADD COLUMN project_id TEXT", []);
+        let _ = conn.execute("ALTER TABLE todos ADD COLUMN start_date TEXT", []);
+        let _ = conn.execute("ALTER TABLE todos ADD COLUMN end_date TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN is_challenge INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN challenge_duration_minutes INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN challenge_elapsed_seconds INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN challenge_started_at TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN challenge_is_paused INTEGER NOT NULL DEFAULT 1",
+            [],
+        );
+
+        // Create index for project_id after column is added (for existing databases)
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id)",
             [],
         );
 

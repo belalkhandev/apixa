@@ -258,7 +258,7 @@ function BodyEditor({
             setFormData(newFormData);
             onChange(formDataToJson(newFormData));
         } else {
-            const cleared = [{ key: "", value: "", type: "text", enabled: true }];
+            const cleared: FormDataItem[] = [{ key: "", value: "", type: "text", enabled: true }];
             setFormData(cleared);
             onChange("");
         }

@@ -1,6 +1,7 @@
 import { useState, useEffect, default as React } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
     Folder,
     Plus,
@@ -11,11 +12,13 @@ import {
     Edit2,
     Trash2,
     ChevronLeft,
-    Download
+    Download,
+    Import
 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import NewCollectionModal from "../components/NewCollectionModal";
+import ImportCollectionModal from "../components/ImportCollectionModal";
 import ConfirmModal from "../components/ConfirmModal";
 import { api, Collection } from "../api";
 
@@ -48,6 +51,7 @@ function Collections() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -74,14 +78,17 @@ function Collections() {
         try {
             if (editingCollection) {
                 await api.updateCollection(editingCollection.id, name, description);
+                toast.success("Collection updated successfully");
             } else {
                 await api.createCollection(name, description);
+                toast.success("Collection created successfully");
             }
             loadCollections();
             setIsModalOpen(false);
             setEditingCollection(null);
         } catch (error) {
             console.error("Failed to process collection:", error);
+            toast.error(editingCollection ? "Failed to update collection" : "Failed to create collection");
         }
     };
 
@@ -95,8 +102,10 @@ function Collections() {
         try {
             await api.deleteCollection(deleteId);
             setCollections(collections.filter(c => c.id !== deleteId));
+            toast.success("Collection deleted successfully");
         } catch (error) {
             console.error("Failed to delete collection:", error);
+            toast.error("Failed to delete collection");
         } finally {
             setDeleteId(null);
         }
@@ -118,9 +127,11 @@ function Collections() {
 
             if (filePath) {
                 await writeTextFile(filePath, json);
+                toast.success("Collections exported successfully");
             }
         } catch (error) {
             console.error("Failed to export all collections:", error);
+            toast.error("Failed to export collections");
         }
     };
 
@@ -130,7 +141,51 @@ function Collections() {
     );
 
     return (
-        <div className="min-h-screen bg-[#fafbfc] font-inter">
+        <div className="flex flex-col h-full font-inter">
+            {/* Header */}
+            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate("/")}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+                        title="Back to Home"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-semibold text-slate-800">All Collections</h1>
+                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Manage and organize your API workspaces</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-medium hover:bg-slate-200 transition-colors text-sm"
+                    >
+                        <Import size={16} />
+                        Import
+                    </button>
+                    <button
+                        onClick={handleExportAll}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-medium hover:bg-slate-200 transition-colors text-sm"
+                    >
+                        <Download size={16} />
+                        Export All
+                    </button>
+                    <button
+                        onClick={() => {
+                            setEditingCollection(null);
+                            setIsModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors text-sm"
+                    >
+                        <Plus size={16} />
+                        New Collection
+                    </button>
+                </div>
+            </header>
+
             <AnimatePresence>
                 {isLoading ? (
                     <motion.div
@@ -138,68 +193,29 @@ function Collections() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 flex items-center justify-center z-50 bg-[#fafbfc]"
+                        className="flex-1 flex items-center justify-center"
                     >
                         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                     </motion.div>
                 ) : (
-                    <motion.div
+                    <motion.main
                         key="content"
                         initial="hidden"
                         animate="show"
                         variants={containerVariants}
-                        className="w-full max-w-6xl mx-auto px-8 py-12"
+                        className="flex-1 p-6 w-full"
                     >
-                        {/* Header */}
-                        <div className="flex flex-col gap-8 mb-12">
-                            <motion.div variants={itemVariants} className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={() => navigate("/")}
-                                        className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
-                                        title="Back to Home"
-                                    >
-                                        <ChevronLeft size={20} />
-                                    </button>
-                                    <div className="flex flex-col">
-                                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">All Collections</h1>
-                                        <p className="text-sm text-slate-500 font-medium">Manage and organize your API workspaces.</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={handleExportAll}
-                                        className="flex items-center gap-2 px-6 h-12 bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded-xl hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
-                                    >
-                                        <Download size={16} />
-                                        EXPORT ALL
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setEditingCollection(null);
-                                            setIsModalOpen(true);
-                                        }}
-                                        className="flex items-center gap-2 px-6 h-12 bg-blue-600 text-xs font-bold text-white rounded-xl hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
-                                    >
-                                        <Plus size={16} />
-                                        NEW COLLECTION
-                                    </button>
-                                </div>
-                            </motion.div>
-
-                            {/* Search */}
-                            <motion.div variants={itemVariants} className="relative group max-w-md">
-                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
-                                <input
-                                    type="text"
-                                    placeholder="Search collections..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                />
-                            </motion.div>
-                        </div>
+                        {/* Search */}
+                        <motion.div variants={itemVariants} className="relative group max-w-md mb-6">
+                            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
+                            <input
+                                type="text"
+                                placeholder="Search collections..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium"
+                            />
+                        </motion.div>
 
                         {/* List */}
                         <motion.div variants={itemVariants} className="flex flex-col gap-3">
@@ -224,7 +240,7 @@ function Collections() {
                                             key={collection.id}
                                             variants={itemVariants}
                                             onClick={() => navigate(`/collection/${collection.id}`)}
-                                            className="grid grid-cols-12 items-center bg-white px-6 py-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
+                                            className="grid grid-cols-12 items-center bg-white px-6 py-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer group active:scale-[0.99]"
                                         >
                                             <div className="col-span-6 flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
@@ -270,10 +286,9 @@ function Collections() {
                                 </div>
                             )}
                         </motion.div>
-                    </motion.div >
-                )
-                }
-            </AnimatePresence >
+                    </motion.main>
+                )}
+            </AnimatePresence>
 
             <NewCollectionModal
                 isOpen={isModalOpen}
@@ -295,7 +310,17 @@ function Collections() {
                 cancelText="Cancel"
                 type="danger"
             />
-        </div >
+
+            <ImportCollectionModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImportSuccess={(c) => {
+                    setCollections([c, ...collections]);
+                    toast.success("Collection imported successfully");
+                    navigate(`/collection/${c.id}`);
+                }}
+            />
+        </div>
     );
 }
 
