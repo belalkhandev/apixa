@@ -382,6 +382,7 @@ function BodyEditor({
                                     {item.type === "file" ? (
                                         <div className="flex items-center gap-2">
                                             <button
+                                                type="button"
                                                 onClick={() => handleFilePick(index)}
                                                 className="flex-1 flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 hover:bg-slate-100 transition-colors truncate"
                                             >
@@ -390,6 +391,7 @@ function BodyEditor({
                                             </button>
                                             {item.value && (
                                                 <button
+                                                    type="button"
                                                     onClick={() => updateFormDataItem(index, "value", "")}
                                                     className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
                                                     title="Clear file"
@@ -414,6 +416,7 @@ function BodyEditor({
                                 </div>
                                 <div className="flex justify-center">
                                     <button
+                                        type="button"
                                         onClick={() => removeFormDataItem(index)}
                                         className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-opacity"
                                     >

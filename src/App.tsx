@@ -6,11 +6,14 @@ import Runner from "./pages/Runner";
 import Collections from "./pages/Collections";
 import Notes from "./pages/Notes";
 import Todos from "./pages/Todos";
+import Archive from "./pages/Archive";
 import MainLayout from "./components/layout/MainLayout";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./App.css";
 
 function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <Toaster position="bottom-right" richColors />
       <Routes>
@@ -46,6 +49,14 @@ function App() {
             </MainLayout>
           }
         />
+        <Route
+          path="/todos/archive"
+          element={
+            <MainLayout>
+              <Archive />
+            </MainLayout>
+          }
+        />
 
         {/* Quick request with sidebar */}
         <Route
@@ -69,6 +80,7 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

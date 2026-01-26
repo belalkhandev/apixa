@@ -342,6 +342,15 @@ export const api = {
         challenge_is_paused: challengeIsPaused,
       },
     }),
+
+  reorderTodos: (todoId: string, targetStatus: string, newOrder: string[]) =>
+    invoke<void>("reorder_todos", {
+      input: {
+        todo_id: todoId,
+        target_status: targetStatus,
+        new_order: newOrder,
+      },
+    }),
 };
 
 export interface LoadTestConfig {
@@ -430,6 +439,7 @@ export interface Todo {
   challenge_elapsed_seconds: number;
   challenge_started_at: string | null;
   challenge_is_paused: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

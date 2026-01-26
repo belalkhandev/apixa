@@ -1548,7 +1548,7 @@ pub fn delete_project(db: State<Database>, id: String) -> Result<(), String> {
 pub fn get_todos(db: State<Database>) -> Result<Vec<Todo>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, created_at, updated_at FROM todos ORDER BY created_at DESC")
+        .prepare("SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, sort_order, created_at, updated_at FROM todos ORDER BY status, sort_order ASC, created_at DESC")
         .map_err(|e| e.to_string())?;
 
     let todos = stmt
@@ -1568,8 +1568,9 @@ pub fn get_todos(db: State<Database>) -> Result<Vec<Todo>, String> {
                 challenge_elapsed_seconds: row.get::<_, i32>(11).unwrap_or(0),
                 challenge_started_at: row.get(12)?,
                 challenge_is_paused: row.get::<_, i32>(13).unwrap_or(1) == 1,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                sort_order: row.get::<_, i32>(14).unwrap_or(0),
+                created_at: row.get(15)?,
+                updated_at: row.get(16)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -1586,9 +1587,18 @@ pub fn create_todo(db: State<Database>, input: CreateTodoInput) -> Result<Todo, 
     let timestamp = now();
     let is_challenge = input.is_challenge.unwrap_or(false);
 
+    // Get the minimum sort_order for pending status to insert at the top
+    let min_sort_order: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MIN(sort_order), 0) - 1 FROM todos WHERE status = 'pending'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(-1);
+
     conn.execute(
-        "INSERT INTO todos (id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_is_paused, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
-        (&id, &input.title, &input.description, "pending", &input.priority, &input.due_date, &input.project_id, &input.start_date, &input.end_date, is_challenge as i32, &input.challenge_duration_minutes, 0, 1, &timestamp, &timestamp),
+        "INSERT INTO todos (id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_is_paused, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        (&id, &input.title, &input.description, "pending", &input.priority, &input.due_date, &input.project_id, &input.start_date, &input.end_date, is_challenge as i32, &input.challenge_duration_minutes, 0, 1, min_sort_order, &timestamp, &timestamp),
     )
     .map_err(|e| e.to_string())?;
 
@@ -1607,6 +1617,7 @@ pub fn create_todo(db: State<Database>, input: CreateTodoInput) -> Result<Todo, 
         challenge_elapsed_seconds: 0,
         challenge_started_at: None,
         challenge_is_paused: true,
+        sort_order: min_sort_order,
         created_at: timestamp.clone(),
         updated_at: timestamp,
     })
@@ -1625,7 +1636,7 @@ pub fn update_todo(db: State<Database>, input: UpdateTodoInput) -> Result<Todo, 
     .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, created_at, updated_at FROM todos WHERE id = ?1",
+        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, sort_order, created_at, updated_at FROM todos WHERE id = ?1",
         [&input.id],
         |row| {
             Ok(Todo {
@@ -1643,8 +1654,9 @@ pub fn update_todo(db: State<Database>, input: UpdateTodoInput) -> Result<Todo, 
                 challenge_elapsed_seconds: row.get::<_, i32>(11).unwrap_or(0),
                 challenge_started_at: row.get(12)?,
                 challenge_is_paused: row.get::<_, i32>(13).unwrap_or(1) == 1,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                sort_order: row.get::<_, i32>(14).unwrap_or(0),
+                created_at: row.get(15)?,
+                updated_at: row.get(16)?,
             })
         },
     )
@@ -1671,7 +1683,7 @@ pub fn update_todo_status(db: State<Database>, id: String, status: String) -> Re
     .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, created_at, updated_at FROM todos WHERE id = ?1",
+        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, sort_order, created_at, updated_at FROM todos WHERE id = ?1",
         [&id],
         |row| {
             Ok(Todo {
@@ -1689,8 +1701,9 @@ pub fn update_todo_status(db: State<Database>, id: String, status: String) -> Re
                 challenge_elapsed_seconds: row.get::<_, i32>(11).unwrap_or(0),
                 challenge_started_at: row.get(12)?,
                 challenge_is_paused: row.get::<_, i32>(13).unwrap_or(1) == 1,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                sort_order: row.get::<_, i32>(14).unwrap_or(0),
+                created_at: row.get(15)?,
+                updated_at: row.get(16)?,
             })
         },
     )
@@ -1712,7 +1725,7 @@ pub fn update_challenge_timer(
     .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, created_at, updated_at FROM todos WHERE id = ?1",
+        "SELECT id, title, description, status, priority, due_date, project_id, start_date, end_date, is_challenge, challenge_duration_minutes, challenge_elapsed_seconds, challenge_started_at, challenge_is_paused, sort_order, created_at, updated_at FROM todos WHERE id = ?1",
         [&input.id],
         |row| {
             Ok(Todo {
@@ -1730,10 +1743,35 @@ pub fn update_challenge_timer(
                 challenge_elapsed_seconds: row.get::<_, i32>(11).unwrap_or(0),
                 challenge_started_at: row.get(12)?,
                 challenge_is_paused: row.get::<_, i32>(13).unwrap_or(1) == 1,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                sort_order: row.get::<_, i32>(14).unwrap_or(0),
+                created_at: row.get(15)?,
+                updated_at: row.get(16)?,
             })
         },
     )
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn reorder_todos(db: State<Database>, input: ReorderTodosInput) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let timestamp = now();
+
+    // Update the status if it changed
+    conn.execute(
+        "UPDATE todos SET status = ?1, updated_at = ?2 WHERE id = ?3",
+        (&input.target_status, &timestamp, &input.todo_id),
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Update sort_order for all todos in the new order
+    for (index, todo_id) in input.new_order.iter().enumerate() {
+        conn.execute(
+            "UPDATE todos SET sort_order = ?1, updated_at = ?2 WHERE id = ?3 AND status = ?4",
+            (index as i32, &timestamp, todo_id, &input.target_status),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

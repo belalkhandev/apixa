@@ -155,16 +155,16 @@ export default function CollectionSidebar({
     }, [showNewFolderInput]);
 
     return (
-        <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col h-full">
+        <aside className="w-[280px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full">
             {/* Collection Header */}
-            <div className="p-4 border-b border-slate-100 flex-shrink-0">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
                 <div className="flex items-center gap-2 mb-3">
                     <button
                         onClick={onHomeClick}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer shrink-0"
                         title="Back to Home"
                     >
-                        <HomeIcon size={16} className="text-slate-500 hover:text-blue-500" />
+                        <HomeIcon size={16} className="text-slate-500 dark:text-slate-400 hover:text-blue-500" />
                     </button>
 
                     <div className="flex-1 min-w-0">
@@ -174,7 +174,7 @@ export default function CollectionSidebar({
                                     type="text"
                                     value={editedCollectionName}
                                     onChange={(e) => onSetEditedCollectionName(e.target.value)}
-                                    className="w-full px-2 py-0.5 text-sm border border-blue-400 rounded focus:outline-none"
+                                    className="w-full px-2 py-0.5 text-sm border border-blue-400 rounded focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") onSaveCollectionName();
@@ -184,13 +184,13 @@ export default function CollectionSidebar({
                                 <button onClick={onSaveCollectionName} className="text-blue-600 hover:text-blue-700 cursor-pointer shrink-0">
                                     <Check size={14} />
                                 </button>
-                                <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600 cursor-pointer shrink-0">
+                                <button onClick={onCancelEditCollectionName} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer shrink-0">
                                     <X size={14} />
                                 </button>
                             </div>
                         ) : (
                             <h2
-                                className="text-sm font-bold text-slate-800 truncate"
+                                className="text-sm font-bold text-slate-800 dark:text-white truncate"
                                 title={collection?.name}
                             >
                                 {collection?.name || "Loading..."}
@@ -201,9 +201,9 @@ export default function CollectionSidebar({
                     <div className="relative shrink-0 flex items-center">
                         <button
                             onClick={() => setShowCollectionMenu(!showCollectionMenu)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
                         >
-                            <MoreHorizontal size={16} className="text-slate-500" />
+                            <MoreHorizontal size={16} className="text-slate-500 dark:text-slate-400" />
                         </button>
                         <AnimatePresence>
                             {showCollectionMenu && (
@@ -212,32 +212,32 @@ export default function CollectionSidebar({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -5, scale: 0.95 }}
                                     transition={{ duration: 0.1 }}
-                                    className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg overflow-hidden z-30"
+                                    className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden z-30 shadow-lg"
                                 >
                                     <button
                                         onClick={() => {
                                             onRenameCollectionStart();
                                             setShowCollectionMenu(false);
                                         }}
-                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2 cursor-pointer"
                                     >
                                         <Edit3 size={14} />
                                         Rename
                                     </button>
                                     <button
                                         onClick={handleExport}
-                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                                        className="w-full px-3 py-2 text-left text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2 cursor-pointer"
                                     >
                                         <Download size={14} />
                                         Export Collection
                                     </button>
-                                    <div className="h-px bg-slate-100 my-1"></div>
+                                    <div className="h-px bg-slate-100 dark:bg-slate-600 my-1"></div>
                                     <button
                                         onClick={() => {
                                             setShowCollectionMenu(false);
                                             onDeleteCollection();
                                         }}
-                                        className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                        className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2 cursor-pointer"
                                     >
                                         <Trash2 size={14} />
                                         Delete
@@ -248,7 +248,7 @@ export default function CollectionSidebar({
                     </div>
                 </div>
 
-                <p className="text-[10px] text-slate-400 truncate leading-tight -mt-2 mb-2">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate leading-tight -mt-2 mb-2">
                     {collection?.description || "No description"}
                 </p>
 
@@ -259,7 +259,7 @@ export default function CollectionSidebar({
                         placeholder="Search..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-blue-400 focus:bg-white transition-all placeholder:text-slate-400"
+                        className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-200 focus:outline-none focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                 </div>
 
@@ -273,7 +273,7 @@ export default function CollectionSidebar({
                     </button>
                     <button
                         onClick={() => onShowNewFolderInput("root")}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors cursor-pointer"
+                        className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
                         title="New Folder"
                     >
                         <FolderPlus size={14} />
@@ -285,14 +285,14 @@ export default function CollectionSidebar({
             <div ref={treeContainerRef} className="flex-1 overflow-y-auto p-2">
                 {/* Root folder input */}
                 {showNewFolderInput === "root" && (
-                    <div className="flex items-center gap-2 p-2 mb-2 bg-slate-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 p-2 mb-2 bg-slate-50 dark:bg-slate-700 rounded-lg border border-blue-200 dark:border-blue-800">
                         <Folder size={14} className="text-amber-500 shrink-0" />
                         <input
                             type="text"
                             value={newFolderName}
                             onChange={(e) => onSetNewFolderName(e.target.value)}
                             placeholder="Folder name"
-                            className="flex-1 text-sm bg-transparent focus:outline-none"
+                            className="flex-1 text-sm bg-transparent focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             autoFocus
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && newFolderName.trim()) {
@@ -310,7 +310,7 @@ export default function CollectionSidebar({
                                     onCreateFolder();
                                 }
                             }}
-                            className="p-1 hover:bg-slate-200 rounded text-blue-600 cursor-pointer"
+                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-blue-600 cursor-pointer"
                         >
                             <Check size={14} />
                         </button>
@@ -319,7 +319,7 @@ export default function CollectionSidebar({
                                 onShowNewFolderInput(null);
                                 onSetNewFolderName("");
                             }}
-                            className="p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
+                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-400 cursor-pointer"
                         >
                             <X size={14} />
                         </button>
@@ -363,17 +363,17 @@ export default function CollectionSidebar({
             </div>
 
             {otherCollections.length > 0 && (
-                <div className="border-t border-slate-200 flex-shrink-0 relative">
+                <div className="border-t border-slate-200 dark:border-slate-700 flex-shrink-0 relative">
                     <button
                         onClick={() => setShowCollectionSwitcher(!showCollectionSwitcher)}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                     >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                             <Layers size={16} className="text-white" />
                         </div>
                         <div className="flex-1 text-left">
-                            <p className="text-xs text-slate-400">Switch Collection</p>
-                            <p className="text-sm font-medium text-slate-700 truncate">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Switch Collection</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
                                 {collection?.name || "Select"}
                             </p>
                         </div>
@@ -390,7 +390,7 @@ export default function CollectionSidebar({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 10 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute bottom-full left-2 right-2 mb-1 bg-white border border-slate-200 rounded-lg overflow-hidden z-40"
+                                className="absolute bottom-full left-2 right-2 mb-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden z-40 shadow-lg"
                             >
                                 <div className="py-1 max-h-48 overflow-y-auto">
                                     {otherCollections.map((col) => (
@@ -400,17 +400,17 @@ export default function CollectionSidebar({
                                                 onSwitchCollection(col.id);
                                                 setShowCollectionSwitcher(false);
                                             }}
-                                            className="w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center gap-3 cursor-pointer"
+                                            className="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors flex items-center gap-3 cursor-pointer"
                                         >
-                                            <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center">
-                                                <Layers size={12} className="text-slate-500" />
+                                            <div className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-600 flex items-center justify-center">
+                                                <Layers size={12} className="text-slate-500 dark:text-slate-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-slate-700 truncate">
+                                                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
                                                     {col.name}
                                                 </p>
                                                 {col.description && (
-                                                    <p className="text-xs text-slate-400 truncate">
+                                                    <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
                                                         {col.description}
                                                     </p>
                                                 )}

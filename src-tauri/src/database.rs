@@ -199,6 +199,16 @@ impl Database {
             [],
         );
 
+        // Add sort_order column for drag-and-drop ordering
+        let _ = conn.execute(
+            "ALTER TABLE todos ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todos_sort ON todos(status, sort_order)",
+            [],
+        );
+
         Ok(())
     }
 }

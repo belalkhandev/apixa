@@ -25,17 +25,17 @@ export function ConfirmModal({
     const typeStyles = {
         danger: {
             icon: <AlertTriangle className="text-red-500" size={24} />,
-            bg: "bg-red-50",
+            bg: "bg-red-50 dark:bg-red-900/30",
             button: "bg-red-600 hover:bg-red-700 text-white"
         },
         warning: {
             icon: <AlertTriangle className="text-amber-500" size={24} />,
-            bg: "bg-amber-50",
+            bg: "bg-amber-50 dark:bg-amber-900/30",
             button: "bg-amber-600 hover:bg-amber-700 text-white"
         },
         info: {
             icon: <AlertTriangle className="text-blue-500" size={24} />,
-            bg: "bg-blue-50",
+            bg: "bg-blue-50 dark:bg-blue-900/30",
             button: "bg-blue-600 hover:bg-blue-700 text-white"
         }
     };
@@ -57,7 +57,7 @@ export function ConfirmModal({
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className="relative w-full max-w-md bg-white rounded-2xl shadow overflow-hidden"
+                        className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow overflow-hidden"
                     >
                         <div className="p-6">
                             <div className="flex items-start gap-4">
@@ -65,22 +65,22 @@ export function ConfirmModal({
                                     {style.icon}
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-slate-800 mb-1">{title}</h3>
-                                    <p className="text-sm text-slate-500 font-medium leading-relaxed">{message}</p>
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{title}</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{message}</p>
                                 </div>
                                 <button
                                     onClick={onClose}
-                                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                 >
                                     <X size={20} />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 bg-slate-50 flex items-center justify-end gap-3">
+                        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-end gap-3">
                             <button
                                 onClick={onClose}
-                                className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
+                                className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                             >
                                 {cancelText}
                             </button>

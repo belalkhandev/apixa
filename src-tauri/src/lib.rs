@@ -97,7 +97,8 @@ pub fn run() {
             update_todo,
             delete_todo,
             update_todo_status,
-            update_challenge_timer
+            update_challenge_timer,
+            reorder_todos
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

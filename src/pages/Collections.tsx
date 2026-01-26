@@ -141,34 +141,34 @@ function Collections() {
     );
 
     return (
-        <div className="flex flex-col h-full font-inter">
+        <div className="flex flex-col h-full font-inter bg-slate-50 dark:bg-slate-900">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+            <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate("/")}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 dark:text-slate-400"
                         title="Back to Home"
                     >
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h1 className="text-xl font-semibold text-slate-800">All Collections</h1>
-                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Manage and organize your API workspaces</p>
+                        <h1 className="text-xl font-semibold text-slate-800 dark:text-white">All Collections</h1>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Manage and organize your API workspaces</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setIsImportModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-medium hover:bg-slate-200 transition-colors text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm"
                     >
                         <Import size={16} />
                         Import
                     </button>
                     <button
                         onClick={handleExportAll}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-medium hover:bg-slate-200 transition-colors text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm"
                     >
                         <Download size={16} />
                         Export All
@@ -213,23 +213,23 @@ function Collections() {
                                 placeholder="Search collections..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium"
+                                className="pl-12 pr-4 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm w-full focus:outline-none focus:border-blue-500 transition-all font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             />
                         </motion.div>
 
                         {/* List */}
                         <motion.div variants={itemVariants} className="flex flex-col gap-3">
                             {filteredCollections.length === 0 ? (
-                                <div className="bg-white rounded-3xl border border-slate-200 border-dashed p-24 flex flex-col items-center text-center">
-                                    <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-6">
-                                        <Folder size={32} className="text-slate-300" />
+                                <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 border-dashed p-24 flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-700 flex items-center justify-center mb-6">
+                                        <Folder size={32} className="text-slate-300 dark:text-slate-500" />
                                     </div>
-                                    <h4 className="text-lg font-bold text-slate-800">No collections found</h4>
-                                    <p className="text-sm text-slate-500 max-w-[320px] mt-2">Create your first collection to start organizing your requests.</p>
+                                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">No collections found</h4>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[320px] mt-2">Create your first collection to start organizing your requests.</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-1.5">
-                                    <div className="grid grid-cols-12 px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-transparent">
+                                    <div className="grid grid-cols-12 px-6 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-transparent">
                                         <div className="col-span-6">Name</div>
                                         <div className="col-span-3 text-center">Last Updated</div>
                                         <div className="col-span-3 text-right pr-4">Actions</div>
@@ -240,23 +240,23 @@ function Collections() {
                                             key={collection.id}
                                             variants={itemVariants}
                                             onClick={() => navigate(`/collection/${collection.id}`)}
-                                            className="grid grid-cols-12 items-center bg-white px-6 py-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer group active:scale-[0.99]"
+                                            className="grid grid-cols-12 items-center bg-white dark:bg-slate-800 px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-sm transition-all cursor-pointer group active:scale-[0.99]"
                                         >
                                             <div className="col-span-6 flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 flex items-center justify-center transition-colors">
                                                     <Folder size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{collection.name}</span>
+                                                    <span className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{collection.name}</span>
                                                     {collection.description && (
-                                                        <span className="text-xs text-slate-400 line-clamp-1 italic">{collection.description}</span>
+                                                        <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1 italic">{collection.description}</span>
                                                     )}
                                                 </div>
                                             </div>
 
                                             <div className="col-span-3 text-center">
-                                                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
-                                                    <Clock size={14} className="text-slate-300" />
+                                                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                    <Clock size={14} className="text-slate-300 dark:text-slate-500" />
                                                     {new Date(collection.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </div>
                                             </div>
@@ -264,20 +264,20 @@ function Collections() {
                                             <div className="col-span-3 flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={(e) => handleEditClick(collection, e)}
-                                                    className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100 cursor-pointer"
+                                                    className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-800 cursor-pointer"
                                                     title="Edit Collection"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => handleDeleteCollection(collection.id, e)}
-                                                    className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100 cursor-pointer"
+                                                    className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-800 cursor-pointer"
                                                     title="Delete Collection"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
-                                                <div className="w-px h-6 bg-slate-100 mx-1" />
-                                                <div className="p-2.5 text-slate-300 group-hover:text-blue-500 transition-all">
+                                                <div className="w-px h-6 bg-slate-100 dark:bg-slate-700 mx-1" />
+                                                <div className="p-2.5 text-slate-300 dark:text-slate-500 group-hover:text-blue-500 transition-all">
                                                     <ChevronRight size={20} />
                                                 </div>
                                             </div>

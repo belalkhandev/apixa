@@ -96,7 +96,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-inter text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-inter text-slate-900 dark:text-slate-100 overflow-x-hidden">
       <AnimatePresence>
         {isLoading ? (
           <motion.div
@@ -104,7 +104,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-slate-50"
+            className="fixed inset-0 flex items-center justify-center z-50 bg-slate-50 dark:bg-slate-900"
           >
             <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
           </motion.div>
@@ -117,8 +117,8 @@ export default function Home() {
             className="p-8"
           >
             <motion.div variants={itemVariants} className="mb-8">
-              <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
-              <p className="text-slate-500 mt-1">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
                 {new Date().toLocaleDateString("en-US", {
                   weekday: "long",
                   month: "long",
@@ -129,7 +129,7 @@ export default function Home() {
             </motion.div>
 
             <motion.div variants={itemVariants} className="mb-8">
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Actions</h2>
+              <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">Quick Actions</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <QuickActionCard
                   label="New Request"
@@ -160,18 +160,18 @@ export default function Home() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div variants={itemVariants} className="lg:col-span-2">
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <Folder size={16} className="text-blue-600" />
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Folder size={16} className="text-blue-600 dark:text-blue-400" />
                       </div>
-                      <h2 className="font-semibold text-slate-800">Recent Collections</h2>
+                      <h2 className="font-semibold text-slate-800 dark:text-white">Recent Collections</h2>
                     </div>
                     {collections.length > 4 && (
                       <button
                         onClick={() => navigate("/collections")}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 cursor-pointer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer"
                       >
                         View all <ChevronRight size={16} />
                       </button>
@@ -180,10 +180,10 @@ export default function Home() {
 
                   {recentCollections.length === 0 ? (
                     <div className="p-12 text-center">
-                      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                        <Folder size={24} className="text-slate-300" />
+                      <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
+                        <Folder size={24} className="text-slate-300 dark:text-slate-500" />
                       </div>
-                      <p className="text-slate-500 text-sm mb-4">No collections yet</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">No collections yet</p>
                       <button
                         onClick={() => setIsModalOpen(true)}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors cursor-pointer"
@@ -193,7 +193,7 @@ export default function Home() {
                       </button>
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-50">
+                    <div className="divide-y divide-slate-50 dark:divide-slate-700">
                       {recentCollections.map((collection) => (
                         <CollectionRow
                           key={collection.id}
@@ -208,17 +208,17 @@ export default function Home() {
 
               <div className="space-y-6">
                 <motion.div variants={itemVariants}>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <FileText size={16} className="text-blue-600" />
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <FileText size={16} className="text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h2 className="font-semibold text-slate-800">Recent Notes</h2>
+                        <h2 className="font-semibold text-slate-800 dark:text-white">Recent Notes</h2>
                       </div>
                       <button
                         onClick={() => navigate("/notes")}
-                        className="text-sm text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
                       >
                         <ArrowRight size={18} />
                       </button>
@@ -226,28 +226,28 @@ export default function Home() {
 
                     {recentNotes.length === 0 ? (
                       <div className="p-8 text-center">
-                        <FileText size={28} className="text-slate-200 mx-auto mb-3" />
-                        <p className="text-slate-400 text-sm mb-3">No notes yet</p>
+                        <FileText size={28} className="text-slate-200 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 dark:text-slate-500 text-sm mb-3">No notes yet</p>
                         <button
                           onClick={() => navigate("/notes")}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium cursor-pointer"
                         >
                           Create a note
                         </button>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-50">
+                      <div className="divide-y divide-slate-50 dark:divide-slate-700">
                         {recentNotes.map((note) => (
                           <div
                             key={note.id}
-                            className="px-5 py-3 hover:bg-slate-50 cursor-pointer transition-colors"
+                            className="px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                             onClick={() => navigate("/notes")}
                           >
                             <div className="flex items-center gap-2 mb-1">
                               {note.is_pinned && <Star size={12} className="text-blue-500 fill-blue-500" />}
-                              <p className="font-medium text-sm text-slate-700 truncate">{note.title}</p>
+                              <p className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate">{note.title}</p>
                             </div>
-                            <p className="text-xs text-slate-400 truncate">
+                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
                               {note.content ? stripHtml(note.content) : "No content"}
                             </p>
                           </div>
@@ -258,17 +258,17 @@ export default function Home() {
                 </motion.div>
 
                 <motion.div variants={itemVariants}>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <CheckSquare size={16} className="text-blue-600" />
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <CheckSquare size={16} className="text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h2 className="font-semibold text-slate-800">Todo Tasks</h2>
+                        <h2 className="font-semibold text-slate-800 dark:text-white">Todo Tasks</h2>
                       </div>
                       <button
                         onClick={() => navigate("/todos")}
-                        className="text-sm text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
                       >
                         <ArrowRight size={18} />
                       </button>
@@ -276,37 +276,36 @@ export default function Home() {
 
                     {recentTodos.length === 0 ? (
                       <div className="p-8 text-center">
-                        <CheckSquare size={28} className="text-slate-200 mx-auto mb-3" />
-                        <p className="text-slate-400 text-sm mb-3">No tasks yet</p>
+                        <CheckSquare size={28} className="text-slate-200 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 dark:text-slate-500 text-sm mb-3">No tasks yet</p>
                         <button
                           onClick={() => navigate("/todos")}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium cursor-pointer"
                         >
                           Add a task
                         </button>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-50">
+                      <div className="divide-y divide-slate-50 dark:divide-slate-700">
                         {recentTodos.map((todo) => (
                           <div
                             key={todo.id}
-                            className="px-5 py-3 hover:bg-slate-50 cursor-pointer transition-colors flex items-center gap-3"
+                            className="px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors flex items-center gap-3"
                             onClick={() => navigate("/todos")}
                           >
                             {todo.status === "completed" ? (
                               <CheckCircle2 size={16} className="text-blue-500 flex-shrink-0" />
                             ) : (
-                              <Circle size={16} className="text-slate-300 flex-shrink-0" />
+                              <Circle size={16} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm truncate ${
-                                todo.status === "completed" ? "text-slate-400 line-through" : "text-slate-700"
-                              }`}>
+                              <p className={`text-sm truncate ${todo.status === "completed" ? "text-slate-400 line-through" : "text-slate-700 dark:text-slate-200"
+                                }`}>
                                 {todo.title}
                               </p>
                             </div>
                             {todo.status === "in_progress" && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-600">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
                                 In Progress
                               </span>
                             )}
@@ -352,13 +351,13 @@ function QuickActionCard({
   return (
     <button
       onClick={onClick}
-      className="group bg-white rounded-xl border border-slate-200 p-4 text-left hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+      className="group bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-left hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all cursor-pointer"
     >
-      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-100 flex items-center justify-center mb-3 transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 flex items-center justify-center mb-3 transition-colors">
         {icon}
       </div>
-      <p className="font-semibold text-slate-800 text-sm">{label}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+      <p className="font-semibold text-slate-800 dark:text-white text-sm">{label}</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{description}</p>
     </button>
   );
 }
@@ -373,31 +372,31 @@ function CollectionRow({
   return (
     <button
       onClick={onClick}
-      className="w-full group flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+      className="w-full group flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left cursor-pointer"
     >
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
-          <Folder size={18} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 flex items-center justify-center transition-colors">
+          <Folder size={18} className="text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
         </div>
         <div>
-          <p className="font-medium text-slate-800 group-hover:text-blue-600 transition-colors">
+          <p className="font-medium text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {collection.name}
           </p>
-          <p className="text-xs text-slate-400 truncate max-w-[300px]">
+          <p className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-[300px]">
             {collection.description || "No description"}
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
           <Clock size={12} />
           {new Date(collection.updated_at).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric"
           })}
         </div>
-        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-all group-hover:translate-x-0.5">
+        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all group-hover:translate-x-0.5">
           <ExternalLink size={14} />
         </div>
       </div>

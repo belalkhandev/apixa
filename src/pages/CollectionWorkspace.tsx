@@ -103,12 +103,81 @@ function CollectionWorkspace() {
   // Get active tab helper
   const activeTab = openTabs.find(t => t.id === activeTabId);
 
-  // Helper to update active tab state
+  const parseUrlParams = (url: string): (Param & { carry_forward: boolean })[] => {
+    try {
+      const questionIndex = url.indexOf("?");
+      if (questionIndex === -1) return [];
+
+      const queryString = url.substring(questionIndex + 1);
+      const params: (Param & { carry_forward: boolean })[] = [];
+
+      if (queryString) {
+        const pairs = queryString.split("&");
+        for (const pair of pairs) {
+          const [key, value = ""] = pair.split("=").map(s => {
+            try {
+              return decodeURIComponent(s);
+            } catch {
+              return s;
+            }
+          });
+          if (key) {
+            params.push({
+              key,
+              value,
+              param_type: "query",
+              description: "",
+              enabled: true,
+              carry_forward: false
+            });
+          }
+        }
+      }
+      return params;
+    } catch {
+      return [];
+    }
+  };
+
   const updateActiveTab = (updates: Partial<TabState>) => {
     if (!activeTabId) return;
     setOpenTabs(tabs => tabs.map(tab =>
       tab.id === activeTabId ? { ...tab, ...updates } : tab
     ));
+  };
+
+  const handleUrlChange = (newUrl: string) => {
+    const parsedParams = parseUrlParams(newUrl);
+    const existingNonUrlParams = activeTab?.params.filter(p =>
+      p.key.trim() && !parsedParams.some(pp => pp.key === p.key)
+    ) || [];
+
+    const mergedParams = [
+      ...parsedParams,
+      ...existingNonUrlParams.filter(p => p.param_type !== "query" || !parsedParams.length)
+    ];
+
+    if (mergedParams.length === 0 || mergedParams[mergedParams.length - 1].key.trim()) {
+      mergedParams.push({ key: "", value: "", param_type: "query", description: "", enabled: true, carry_forward: false });
+    }
+
+    updateActiveTab({ url: newUrl, params: mergedParams });
+  };
+
+  const handleParamsChange = (newParams: (Param & { carry_forward: boolean })[]) => {
+    if (!activeTab) return;
+
+    const enabledParams = newParams.filter(p => p.enabled && p.key.trim());
+    const baseUrl = activeTab.url.split("?")[0];
+
+    if (enabledParams.length > 0) {
+      const queryString = enabledParams
+        .map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
+        .join("&");
+      updateActiveTab({ url: `${baseUrl}?${queryString}`, params: newParams });
+    } else {
+      updateActiveTab({ url: baseUrl, params: newParams });
+    }
   };
 
   // UI state
@@ -626,7 +695,7 @@ function CollectionWorkspace() {
 
       const requestHeaders: Record<string, string> = {};
       activeTab.headers.forEach((h) => {
-        if (h.key && h.value) {
+        if (h.enabled && h.key.trim()) {
           requestHeaders[replaceEnvVariables(h.key)] = replaceEnvVariables(h.value);
         }
       });
@@ -651,9 +720,10 @@ function CollectionWorkspace() {
         }
       }
 
-      // Handle body and Content-Type based on bodyType
       let form_data = null;
-      if (activeTab.bodyType === "formdata") {
+      const hasBody = activeTab.method !== "GET" && activeTab.method !== "DELETE";
+
+      if (hasBody && activeTab.bodyType === "formdata") {
         try {
           const parsed = JSON.parse(activeTab.body);
           if (Array.isArray(parsed)) {
@@ -665,7 +735,25 @@ function CollectionWorkspace() {
             }));
           }
         } catch {
-          // Fallback if not valid JSON
+          form_data = null;
+        }
+      }
+
+      if (hasBody && activeTab.bodyType === "json" && resolvedBody.trim()) {
+        const hasContentType = Object.keys(requestHeaders).some(
+          k => k.toLowerCase() === "content-type"
+        );
+        if (!hasContentType) {
+          requestHeaders["Content-Type"] = "application/json";
+        }
+      }
+
+      if (hasBody && activeTab.bodyType === "text" && resolvedBody.trim()) {
+        const hasContentType = Object.keys(requestHeaders).some(
+          k => k.toLowerCase() === "content-type"
+        );
+        if (!hasContentType) {
+          requestHeaders["Content-Type"] = "text/plain";
         }
       }
 
@@ -673,7 +761,7 @@ function CollectionWorkspace() {
         method: activeTab.method,
         url: resolvedUrl,
         headers: requestHeaders,
-        body: (activeTab.method !== "GET" && activeTab.method !== "DELETE" && activeTab.bodyType !== "formdata") ? resolvedBody : null,
+        body: (hasBody && activeTab.bodyType !== "formdata") ? resolvedBody : null,
         body_type: activeTab.bodyType,
         form_data: form_data
       });
@@ -801,7 +889,7 @@ function CollectionWorkspace() {
 
 
   return (
-    <div className="h-screen bg-slate-50 flex">
+    <div className="h-screen bg-slate-50 dark:bg-slate-900 flex">
       {collectionId && (
         <CollectionSidebar
           collection={currentCollection || null}
@@ -845,14 +933,14 @@ function CollectionWorkspace() {
         />
       )}
 
-      <main className="flex-1 flex flex-col bg-slate-50">
-        <div className="bg-white border-b border-slate-200">
+      <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-1 flex-1 overflow-x-auto">
               {!collectionId && (
                 <button
                   onClick={() => navigate('/')}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mr-1 cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors mr-1 cursor-pointer"
                   title="Back to Home"
                 >
                   <Home size={16} />
@@ -862,8 +950,8 @@ function CollectionWorkspace() {
                 <div
                   key={tab.id}
                   className={`flex items-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors whitespace-nowrap cursor-pointer ${activeTabId === tab.id
-                    ? "border-blue-500 text-slate-800 bg-blue-50/30"
-                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                    ? "border-blue-500 text-slate-800 dark:text-white bg-blue-50/30 dark:bg-blue-900/20"
+                    : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                     }`}
                 >
                   <div
@@ -877,7 +965,7 @@ function CollectionWorkspace() {
                   </div>
                   <button
                     onClick={(e) => handleCloseTab(tab.id, e)}
-                    className="p-0.5 hover:bg-slate-200 rounded transition-colors cursor-pointer"
+                    className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors cursor-pointer"
                   >
                     <X size={12} className="text-slate-400" />
                   </button>
@@ -885,11 +973,11 @@ function CollectionWorkspace() {
               ))}
               <button
                 onClick={() => handleNewRequest()}
-                className="p-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <Plus size={16} />
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+              <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer">
                 <MoreHorizontal size={16} />
               </button>
             </div>
@@ -910,22 +998,22 @@ function CollectionWorkspace() {
         {
           activeTab ? (
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="bg-white px-4 py-3 border-b border-slate-200">
+              <div className="bg-white dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-2 mb-2">
                   <input
                     type="text"
                     value={activeTab.name}
                     onChange={(e) => updateActiveTab({ name: e.target.value })}
                     placeholder="Request name"
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
+                    className="px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400"
                   />
                   {(currentRequest || (activeTabId && activeTabId.startsWith("temp-"))) && (
                     <button
                       onClick={collectionId ? handleSaveRequest : () => setShowSaveModal(true)}
                       disabled={!activeTab.url.trim()}
-                      className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeTab.url.trim()
-                        ? "text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100"
-                        : "text-slate-400 cursor-not-allowed bg-slate-50"
+                      className={`px-3 py-1.5 border rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeTab.url.trim()
+                        ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                        : "text-slate-400 cursor-not-allowed bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
                         }`}
                     >
                       {collectionId ? "Save" : "Save to Collection"}
@@ -937,7 +1025,7 @@ function CollectionWorkspace() {
                     <select
                       value={activeTab.method}
                       onChange={(e) => updateActiveTab({ method: e.target.value as HttpMethod })}
-                      className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[activeTab.method] || "text-slate-600"}`}
+                      className={`appearance-none pl-3 pr-8 py-2 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-lg text-sm font-semibold focus:outline-none focus:border-blue-400 ${methodTextColors[activeTab.method] || "text-slate-600"}`}
                     >
                       <option value="GET">GET</option>
                       <option value="POST">POST</option>
@@ -948,15 +1036,21 @@ function CollectionWorkspace() {
                     <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
 
-                  <div className="flex-1 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
+                  <div className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all h-[42px]">
                     <VariableInput
                       value={activeTab.url}
-                      onChange={(url) => updateActiveTab({ url })}
+                      onChange={handleUrlChange}
                       placeholder="Enter request URL (e.g., https://api.example.com/users)"
                       className="px-4 h-full"
                       environments={environments}
                       selectedEnvId={selectedEnvId}
                       onUpdateVariable={handleUpdateVariable}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !activeTab.isLoading) {
+                          e.preventDefault();
+                          handleSendRequest();
+                        }
+                      }}
                     />
                   </div>
 
@@ -969,17 +1063,17 @@ function CollectionWorkspace() {
                     Send
                   </button>
 
-                  <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-2">
+                  <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200 dark:border-slate-600 ml-2">
                     <button
                       onClick={() => setLayout("vertical")}
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "vertical" ? "bg-white text-blue-600 border border-slate-200" : "text-slate-400 hover:text-slate-600"}`}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "vertical" ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-500" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
                       title="Vertical Split"
                     >
                       <Rows size={14} />
                     </button>
                     <button
                       onClick={() => setLayout("horizontal")}
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "horizontal" ? "bg-white text-blue-600 border border-slate-200" : "text-slate-400 hover:text-slate-600"}`}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${layout === "horizontal" ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-500" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
                       title="Horizontal Split"
                     >
                       <Columns size={14} />
@@ -990,7 +1084,7 @@ function CollectionWorkspace() {
 
               <div
                 ref={containerRef}
-                className={`flex-1 flex ${layout === "vertical" ? "flex-col" : "flex-row"} overflow-hidden bg-slate-50 relative`}
+                className={`flex-1 flex ${layout === "vertical" ? "flex-col" : "flex-row"} overflow-hidden bg-slate-50 dark:bg-slate-900 relative`}
               >
                 <div
                   style={{ flexBasis: `${splitPos}%` }}
@@ -1004,7 +1098,7 @@ function CollectionWorkspace() {
                       headers={activeTab.headers}
                       onHeadersChange={(headers) => updateActiveTab({ headers })}
                       params={activeTab.params}
-                      onParamsChange={(params) => updateActiveTab({ params })}
+                      onParamsChange={handleParamsChange}
                       method={activeTab.method}
                       environments={environments}
                       selectedEnvId={selectedEnvId}
@@ -1023,7 +1117,7 @@ function CollectionWorkspace() {
                 </div>
 
                 <div
-                  className={`z-20 flex items-center justify-center shrink-0 hover:bg-blue-400 bg-slate-200 transition-colors
+                  className={`z-20 flex items-center justify-center shrink-0 hover:bg-blue-400 bg-slate-200 dark:bg-slate-700 transition-colors
                     ${layout === "vertical" ? "h-1.5 w-full cursor-row-resize" : "w-1.5 h-full cursor-col-resize"}
                 `}
                   onMouseDown={(e) => {
@@ -1032,8 +1126,8 @@ function CollectionWorkspace() {
                   }}
                 >
                   {layout === "vertical"
-                    ? <GripHorizontal size={12} className="text-slate-400" />
-                    : <GripVertical size={12} className="text-slate-400" />
+                    ? <GripHorizontal size={12} className="text-slate-400 dark:text-slate-500" />
+                    : <GripVertical size={12} className="text-slate-400 dark:text-slate-500" />
                   }
                 </div>
 
@@ -1059,12 +1153,12 @@ function CollectionWorkspace() {
               >
                 <button
                   onClick={() => handleNewRequest()}
-                  className="flex flex-col items-center gap-3 px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-white transition-colors"
+                  className="flex flex-col items-center gap-3 px-8 py-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:border-blue-400 hover:bg-white dark:hover:bg-slate-800 transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                     <Plus size={24} className="text-blue-500" />
                   </div>
-                  <span className="text-sm font-medium text-slate-600">New Request</span>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">New Request</span>
                 </button>
               </motion.div>
             </div>

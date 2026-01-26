@@ -1,6 +1,30 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  :root {
+    --color-background: 248 250 252;
+    --color-foreground: 15 23 42;
+    --color-card: 255 255 255;
+    --color-card-foreground: 15 23 42;
+    --color-border: 226 232 240;
+    --color-input: 226 232 240;
+    --color-muted: 241 245 249;
+    --color-muted-foreground: 100 116 139;
+  }
+
+  .dark {
+    --color-background: 15 23 42;
+    --color-foreground: 241 245 249;
+    --color-card: 30 41 59;
+    --color-card-foreground: 241 245 249;
+    --color-border: 51 65 85;
+    --color-input: 51 65 85;
+    --color-muted: 51 65 85;
+    --color-muted-foreground: 148 163 184;
+  }
+
   html,
   body,
   #root {
@@ -13,14 +37,28 @@
       Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #ffffff;
   }
+}
+
+@theme inline {
+  --color-background: rgb(var(--color-background));
+  --color-foreground: rgb(var(--color-foreground));
+  --color-card: rgb(var(--color-card));
+  --color-card-foreground: rgb(var(--color-card-foreground));
+  --color-border: rgb(var(--color-border));
+  --color-input: rgb(var(--color-input));
+  --color-muted: rgb(var(--color-muted));
+  --color-muted-foreground: rgb(var(--color-muted-foreground));
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .dark .scrollbar-thin {
+    scrollbar-color: #475569 transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -37,7 +75,15 @@
     border-radius: 3px;
   }
 
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #475569;
+  }
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: #94a3b8;
+  }
+
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b;
   }
 }

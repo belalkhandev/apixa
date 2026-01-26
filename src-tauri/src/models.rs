@@ -305,6 +305,7 @@ pub struct Todo {
     pub challenge_elapsed_seconds: i32,
     pub challenge_started_at: Option<String>,
     pub challenge_is_paused: bool,
+    pub sort_order: i32,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -343,4 +344,11 @@ pub struct UpdateChallengeTimerInput {
     pub challenge_elapsed_seconds: i32,
     pub challenge_started_at: Option<String>,
     pub challenge_is_paused: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReorderTodosInput {
+    pub todo_id: String,
+    pub target_status: String,
+    pub new_order: Vec<String>,
 }
