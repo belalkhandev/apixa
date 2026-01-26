@@ -148,6 +148,17 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
             CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority);
             CREATE INDEX IF NOT EXISTS idx_todos_created ON todos(created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS db_schemas (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                data TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_db_schemas_created ON db_schemas(created_at DESC);
             "
         )?;
 

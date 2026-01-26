@@ -352,3 +352,30 @@ pub struct ReorderTodosInput {
     pub target_status: String,
     pub new_order: Vec<String>,
 }
+
+// ==================== DB Schemas ====================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbSchema {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub data: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateDbSchemaInput {
+    pub name: String,
+    pub description: Option<String>,
+    pub data: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateDbSchemaInput {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub data: Option<String>,
+}

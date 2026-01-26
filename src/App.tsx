@@ -9,6 +9,7 @@ import Todos from "./pages/Todos";
 import Archive from "./pages/Archive";
 import MainLayout from "./components/layout/MainLayout";
 import JsonPrettier from "./pages/JsonPrettier";
+import DbSchemaPage from "./pages/DbSchema";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import "./App.css";
 
@@ -66,6 +67,11 @@ function App() {
                 <JsonPrettier />
               </MainLayout>
             }
+          />
+
+          <Route
+            path="/db-schema"
+            element={<DbSchemaPage />}
           />
 
           {/* Quick request with sidebar */}

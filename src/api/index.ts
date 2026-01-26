@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { DbSchema } from "../types/schema";
 
 export interface Collection {
   id: string;
@@ -351,6 +352,23 @@ export const api = {
         new_order: newOrder,
       },
     }),
+
+  // ==================== DB Schemas ====================
+
+  getDbSchemas: () => invoke<DbSchema[]>("get_db_schemas"),
+
+  createDbSchema: (name: string, description?: string, data?: string) =>
+    invoke<DbSchema>("create_db_schema", {
+      input: { name, description: description || null, data: data || null },
+    }),
+
+  updateDbSchema: (id: string, name: string, description?: string, data?: string) =>
+    invoke<DbSchema>("update_db_schema", {
+      input: { id, name, description: description || null, data: data || null },
+    }),
+
+  deleteDbSchema: (id: string) =>
+    invoke<void>("delete_db_schema", { id }),
 };
 
 export interface LoadTestConfig {

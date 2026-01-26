@@ -16,7 +16,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  FileJson
+  FileJson,
+  Database
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -182,6 +183,12 @@ export default function AppSidebar({ onNewRequest, onSelectRunner }: AppSidebarP
               icon={<FileJson size={18} />}
               onClick={() => navigate("/json-prettier")}
               isActive={isActive("/json-prettier")}
+            />
+            <SidebarItem
+              label="DB Schema"
+              icon={<Database size={18} />}
+              onClick={() => navigate("/db-schema")}
+              isActive={isActive("/db-schema")}
             />
           </div>
         </SidebarSection>

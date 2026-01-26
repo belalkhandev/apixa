@@ -98,7 +98,12 @@ pub fn run() {
             delete_todo,
             update_todo_status,
             update_challenge_timer,
-            reorder_todos
+            reorder_todos,
+            // DB Schema commands
+            get_db_schemas,
+            create_db_schema,
+            update_db_schema,
+            delete_db_schema
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
