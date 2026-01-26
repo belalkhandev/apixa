@@ -15,7 +15,8 @@ import {
   Gauge,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  FileJson
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -77,19 +78,17 @@ function SidebarItem({ label, icon, onClick, isActive, badge }: SidebarItemProps
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl mx-2 transition-all cursor-pointer ${
-        isActive
-          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800"
-          : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white border border-transparent"
-      }`}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl mx-2 transition-all cursor-pointer ${isActive
+        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800"
+        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white border border-transparent"
+        }`}
       style={{ width: "calc(100% - 16px)" }}
     >
       <span className={isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}>{icon}</span>
       <span className="flex-1 text-left">{label}</span>
       {badge !== undefined && (
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-          isActive ? "bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-        }`}>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? "bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+          }`}>
           {badge}
         </span>
       )}
@@ -177,6 +176,12 @@ export default function AppSidebar({ onNewRequest, onSelectRunner }: AppSidebarP
               icon={<CheckSquare size={18} />}
               onClick={() => navigate("/todos")}
               isActive={isActive("/todos")}
+            />
+            <SidebarItem
+              label="JSON Prettier"
+              icon={<FileJson size={18} />}
+              onClick={() => navigate("/json-prettier")}
+              isActive={isActive("/json-prettier")}
             />
           </div>
         </SidebarSection>
