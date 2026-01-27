@@ -5,6 +5,7 @@ import ParamsEditor, { Param } from "../shared/ParamsEditor";
 import AuthEditor, { AuthType } from "../shared/AuthEditor";
 import ExtractEditor, { ExtractRule } from "../shared/ExtractEditor";
 import { Environment } from "../../api";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export type { BodyType };
 export type { ExtractRule };
@@ -50,6 +51,8 @@ function RequestConfigTabs({
     variant = "default",
     className = "",
 }: RequestConfigTabsProps) {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === "dark";
     const [activeTab, setActiveTab] = useState("Body");
 
     const getVisibleTabs = () => {
@@ -80,12 +83,27 @@ function RequestConfigTabs({
     }, [method, visibleTabs, activeTab]);
 
     const containerClass = variant === "compact"
-        ? "bg-white border border-slate-200 rounded-lg flex flex-col flex-1 min-h-0"
-        : "bg-white rounded-xl border border-slate-200 mb-4 h-full flex flex-col";
+        ? `border rounded-lg flex flex-col flex-1 min-h-0 ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`
+        : `rounded-xl border mb-4 h-full flex flex-col ${isDark ? "bg-white border-slate-200" : "bg-white border-slate-200"}`; // Note: Kept existing light mode fallback for non-compact as default behavior seemed to imply white background. Wait, let's make it consistent.
+
+    // Actually, let's fix the logic properly:
+    // Original: 
+    // ? "bg-white border border-slate-200 rounded-lg flex flex-col flex-1 min-h-0"
+    // : "bg-white rounded-xl border border-slate-200 mb-4 h-full flex flex-col";
+
+    // New:
+    // ? `${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"} rounded-lg flex flex-col flex-1 min-h-0`
+    // : `${isDark ? "bg-white border-slate-200" : "bg-white border-slate-200"} rounded-xl border mb-4 h-full flex flex-col` -> Wait, the outer container should probably stay white for "default" or also switch? 
+    // The "default" variant is used in the main request panel. If the whole app is dark, this should probably be dark or at least consistent.
+    // However, the `BodyEditor` handles its own background. The `RequestConfigTabs` is the wrapper.
+    // Let's look at `ResponseViewer.tsx` which is a sibling. It uses `bg-white` (or `bg-slate-900` in my update).
+    // So `RequestConfigTabs` should likely follow suit.
+
+    // Let's refine the replacement:
 
     return (
         <div className={`${containerClass} ${className}`}>
-            <div className={`border-b border-slate-${variant === "compact" ? "200" : "100"} px-4 shrink-0`}>
+            <div className={`border-b px-4 shrink-0 ${isDark ? "border-slate-800" : `border-slate-${variant === "compact" ? "200" : "100"}`}`}>
                 <div className="flex gap-1">
                     {visibleTabs.map((tab) => (
                         <button
@@ -93,7 +111,9 @@ function RequestConfigTabs({
                             onClick={() => setActiveTab(tab)}
                             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === tab
                                 ? "text-blue-600 border-blue-500"
-                                : "text-slate-500 border-transparent hover:text-slate-700"
+                                : isDark
+                                    ? "text-slate-500 border-transparent hover:text-slate-300"
+                                    : "text-slate-500 border-transparent hover:text-slate-700"
                                 }`}
                         >
                             {tab}

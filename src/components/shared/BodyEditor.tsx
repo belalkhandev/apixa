@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, AlertCircle, FileText, FileUp, Upload } from "lucide-react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { Environment } from "../../api";
+import { useTheme } from "../../contexts/ThemeContext";
 import prettier from "prettier/standalone";
 import parserBabel from "prettier/plugins/babel";
 import parserEstree from "prettier/plugins/estree";
@@ -36,6 +37,8 @@ function BodyEditor({
     onBodyTypeChange,
     onUpdateVariable,
 }: BodyEditorProps) {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === "dark";
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<any>(null);
     const decorationIdsRef = useRef<string[]>([]);
@@ -208,14 +211,14 @@ function BodyEditor({
         const style = document.createElement("style");
         style.innerHTML = `
             .monaco-var-valid {
-                color: #059669 !important;
-                background: rgba(16, 185, 129, 0.1);
+                color: ${isDark ? "#34d399" : "#059669"} !important;
+                background: ${isDark ? "rgba(16, 185, 129, 0.2)" : "rgba(16, 185, 129, 0.1)"};
                 border-bottom: 1px dashed #10b981;
                 font-weight: bold;
             }
             .monaco-var-invalid {
-                color: #dc2626 !important;
-                background: rgba(239, 68, 68, 0.1);
+                color: ${isDark ? "#f87171" : "#dc2626"} !important;
+                background: ${isDark ? "rgba(239, 68, 68, 0.2)" : "rgba(239, 68, 68, 0.1)"};
                 border-bottom: 1px dashed #ef4444;
             }
         `;
@@ -223,6 +226,13 @@ function BodyEditor({
 
         updateDecorations();
     };
+
+    useEffect(() => {
+        // Re-inject styles when theme changes or editor is mounted
+        if (editorRef.current && monacoRef.current) {
+            handleEditorMount(editorRef.current, monacoRef.current);
+        }
+    }, [isDark]);
 
     const updateFormDataItem = (
         index: number,
@@ -286,7 +296,7 @@ function BodyEditor({
         <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-slate-700">Request Body</span>
+                    <span className={`text-sm font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`}>Request Body</span>
                     {!isValidJson && bodyType === "json" && value.trim() !== "" && (
                         <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                             <AlertCircle size={10} />
@@ -298,18 +308,25 @@ function BodyEditor({
                     {bodyType === "json" && (
                         <button
                             onClick={handleFormat}
-                            className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                            className={`px-2 py-1 text-xs font-medium rounded transition-colors ${isDark
+                                ? "text-blue-400 bg-blue-900/30 hover:bg-blue-900/50"
+                                : "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                                }`}
                             title="Prettify JSON"
                         >
                             Prettify
                         </button>
                     )}
-                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <div className={`flex p-1 rounded-lg border ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
                         <button
                             onClick={() => handleTypeChange("json")}
                             className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "json"
-                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                ? isDark
+                                    ? "bg-slate-700 text-blue-400 border border-slate-600 shadow-sm"
+                                    : "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : isDark
+                                    ? "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                                 }`}
                         >
                             JSON
@@ -317,8 +334,12 @@ function BodyEditor({
                         <button
                             onClick={() => handleTypeChange("formdata")}
                             className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "formdata"
-                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                ? isDark
+                                    ? "bg-slate-700 text-blue-400 border border-slate-600 shadow-sm"
+                                    : "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : isDark
+                                    ? "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                                 }`}
                         >
                             Form Data
@@ -326,8 +347,12 @@ function BodyEditor({
                         <button
                             onClick={() => handleTypeChange("text")}
                             className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${bodyType === "text"
-                                ? "bg-white text-blue-600 border border-slate-200 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                ? isDark
+                                    ? "bg-slate-700 text-blue-400 border border-slate-600 shadow-sm"
+                                    : "bg-white text-blue-600 border border-slate-200 shadow-sm"
+                                : isDark
+                                    ? "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                                 }`}
                         >
                             Text
@@ -336,20 +361,20 @@ function BodyEditor({
                 </div>
             </div>
 
-            <div className="flex-1 rounded-lg overflow-hidden bg-white min-h-[200px]">
+            <div className={`flex-1 rounded-lg overflow-hidden min-h-[200px] ${isDark ? "bg-slate-900 border border-slate-800" : "bg-white"}`}>
                 {bodyType === "formdata" ? (
                     <div>
-                        <div className="grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
-                            <span className="text-xs font-medium text-slate-600">Key</span>
-                            <span className="text-xs font-medium text-slate-600">Value</span>
+                        <div className={`grid grid-cols-[1fr_1fr_40px] gap-2 px-3 py-2 border-b ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                            <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>Key</span>
+                            <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>Value</span>
                             <span></span>
                         </div>
                         {formData.map((item, index) => (
                             <div
                                 key={index}
-                                className="grid grid-cols-[1fr_1fr_40px] items-center border-b border-slate-100 last:border-b-0 group/row"
+                                className={`grid grid-cols-[1fr_1fr_40px] items-center border-b last:border-b-0 group/row ${isDark ? "border-slate-800" : "border-slate-100"}`}
                             >
-                                <div className="px-3 py-2 border-r border-slate-50 relative group/key">
+                                <div className={`px-3 py-2 border-r relative group/key ${isDark ? "border-slate-800" : "border-slate-50"}`}>
                                     <VariableInput
                                         value={item.key}
                                         onChange={(newValue) =>
@@ -361,17 +386,21 @@ function BodyEditor({
                                         selectedEnvId={selectedEnvId}
                                         onUpdateVariable={onUpdateVariable}
                                     />
-                                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center bg-white border border-slate-200 rounded-md shadow-sm opacity-0 group-hover/key:opacity-100 transition-opacity z-10 p-0.5">
+                                    <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center border rounded-md shadow-sm opacity-0 group-hover/key:opacity-100 transition-opacity z-10 p-0.5 ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
                                         <button
                                             onClick={() => updateFormDataItem(index, "type", "text")}
-                                            className={`p-1 rounded transition-colors ${item.type === "text" ? "text-blue-600 bg-blue-50" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`p-1 rounded transition-colors ${item.type === "text"
+                                                ? isDark ? "text-blue-400 bg-blue-900/30" : "text-blue-600 bg-blue-50"
+                                                : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"}`}
                                             title="Text"
                                         >
                                             <FileText size={12} />
                                         </button>
                                         <button
                                             onClick={() => updateFormDataItem(index, "type", "file")}
-                                            className={`p-1 rounded transition-colors ${item.type === "file" ? "text-blue-600 bg-blue-50" : "text-slate-400 hover:text-slate-600"}`}
+                                            className={`p-1 rounded transition-colors ${item.type === "file"
+                                                ? isDark ? "text-blue-400 bg-blue-900/30" : "text-blue-600 bg-blue-50"
+                                                : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"}`}
                                             title="File"
                                         >
                                             <FileUp size={12} />
@@ -384,7 +413,10 @@ function BodyEditor({
                                             <button
                                                 type="button"
                                                 onClick={() => handleFilePick(index)}
-                                                className="flex-1 flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 hover:bg-slate-100 transition-colors truncate"
+                                                className={`flex-1 flex items-center justify-between px-3 py-1.5 border rounded text-xs transition-colors truncate ${isDark
+                                                    ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750"
+                                                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                                                    }`}
                                             >
                                                 <span className="truncate">{item.value ? item.value.split(/[/\\]/).pop() : "Select file..."}</span>
                                                 <Upload size={12} className="shrink-0 ml-2" />
@@ -445,7 +477,7 @@ function BodyEditor({
                             readOnly: false,
                         }}
                         onMount={handleEditorMount}
-                        theme="light"
+                        theme={isDark ? "vs-dark" : "light"}
                     />
                 )}
             </div>

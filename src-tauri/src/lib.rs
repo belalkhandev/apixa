@@ -41,6 +41,7 @@ pub fn run() {
             app.manage(std::sync::Arc::new(tokio::sync::Mutex::new(
                 load_tester::LoadTester::new(),
             )));
+            app.manage(reqwest::Client::new());
 
             let handle = app.handle().clone();
             std::thread::spawn(move || {
